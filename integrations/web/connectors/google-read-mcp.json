@@ -1,0 +1,43 @@
+{
+ "manifest_version": 2,
+ "id": "google-read-mcp",
+ "version": "1.0.0",
+ "title": "Google read-only MCP (gog)",
+ "description": "Fixed read-only surface: bin/google-mcp.cjs.",
+ "class": "general",
+ "source": "core",
+ "plugin": "mcp",
+ "auth": {
+  "type": "oauth2",
+  "scopes": [
+   "gmail.readonly",
+   "drive.readonly",
+   "documents.readonly"
+  ]
+ },
+ "tools": {},
+ "actions": {},
+ "mcp_tools": {
+  "gmail_search": {
+   "risk": "read"
+  },
+  "gmail_get_message": {
+   "risk": "read"
+  },
+  "gmail_get_thread": {
+   "risk": "read"
+  },
+  "gmail_list_labels": {
+   "risk": "read"
+  },
+  "drive_search": {
+   "risk": "read"
+  },
+  "drive_get": {
+   "risk": "read"
+  },
+  "docs_get": {
+   "risk": "read"
+  }
+ }
+}

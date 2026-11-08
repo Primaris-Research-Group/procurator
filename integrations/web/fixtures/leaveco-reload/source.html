@@ -1,0 +1,9 @@
+<!doctype html><html><head><title>Report an absence | MyLeaveco</title></head>
+<body><main><h1>Review your absence</h1>
+<div role="alert" class="warning">This absence overlaps an absence already reported for 11/03/2026. If you submit, the earlier entry will be replaced.</div>
+<p>Absence date: 11/03/2026 · Hours missed: 4 · Reason: Medical appointment</p>
+<form action="/absence/report/submit" method="post">
+<input type="hidden" name="token" value="x">
+<button type="button" onclick="history.back()">Go Back</button>
+<button type="submit" aria-describedby="w1">Submit</button><span id="w1" hidden>Submitting will replace the absence already reported.</span>
+</form></main></body></html>

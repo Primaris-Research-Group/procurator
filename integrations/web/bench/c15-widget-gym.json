@@ -1,0 +1,42 @@
+{
+ "id": "C15",
+ "name": "c15-widget-gym",
+ "site": "the-internet.herokuapp.com",
+ "start_url": "https://the-internet.herokuapp.com/",
+ "lanes": "both",
+ "expect": "browse",
+ "suites": [
+  "quick",
+  "full"
+ ],
+ "intent": "On the-internet.herokuapp.com: choose Option 2 at /dropdown and confirm it is selected; then at /dynamic_loading/2 press Start and tell me the text that appears.",
+ "hard_part": "Control case: dropdown and delayed content on a practice site (deterministic)",
+ "key_nodes": [
+  {
+   "id": "dynamic",
+   "description": "Hello World! after Start",
+   "evidence_any": [
+    "Hello World!"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Dynamic text loaded",
+  "evidence_any": [
+   "Hello World!"
+  ]
+ },
+ "answer_check": {
+  "description": "Option 2 and Hello World!",
+  "patterns": [
+   "(?i)option 2",
+   "(?i)hello world"
+  ]
+ },
+ "budget": {
+  "steps": 12,
+  "minutes": 5
+ },
+ "blocked_is_acceptable": false,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, payment, consent, CAPTCHA or bot check, and every final/commit/protected button"
+}

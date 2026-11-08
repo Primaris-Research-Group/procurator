@@ -1,0 +1,12 @@
+services:
+  openclaw-gateway:
+    environment:
+      PROCURATOR_OWNER_ID: ${PROCURATOR_OWNER_ID:-}
+    env_file:
+      # Optional (0.30.0): only boxes with phone calls set up have this file; a fresh install starts without it.
+      - path: /var/lib/procurator-voice/gateway.env
+        required: false
+    ports:
+      - "127.0.0.1:3334:3334"
+    volumes:
+      - ./integrations/voice-plugin:/opt/procurator/integrations/voice-plugin:ro

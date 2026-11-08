@@ -1,0 +1,42 @@
+{
+ "id": "C09",
+ "name": "c09-rental-car-kayak",
+ "site": "kayak.com",
+ "start_url": "https://www.kayak.com/cars",
+ "lanes": "both",
+ "expect": "browse",
+ "suites": [
+  "full"
+ ],
+ "intent": "On kayak.com, find the cheapest economy or compact rental car at Atlanta airport (ATL), pick-up {date+30} at 10:00 AM, drop-off {date+33} at 10:00 AM. Tell me the company, the car and the total price.",
+ "hard_part": "Car search form with times; total vs daily price",
+ "key_nodes": [
+  {
+   "id": "results",
+   "description": "ATL car results for the dates",
+   "evidence_any": [
+    "ATL",
+    "Atlanta"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Car offers with prices",
+  "evidence_any": [
+   "$"
+  ]
+ },
+ "answer_check": {
+  "description": "Rental company and $ total",
+  "patterns": [
+   "\\$\\s?\\d",
+   "(?i)hertz|avis|enterprise|budget|alamo|national|sixt|thrifty|dollar|fox|payless|economy|compact"
+  ]
+ },
+ "budget": {
+  "steps": 20,
+  "minutes": 8
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, payment, consent, CAPTCHA or bot check, and every final/commit/protected button"
+}

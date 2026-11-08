@@ -1,0 +1,25 @@
+{
+  "name": "openclaw-plugin-procurator-mail",
+  "version": "0.8.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "index.mjs",
+    "register.mjs",
+    "openclaw.plugin.json",
+    "connector-gate.mjs",
+    "owner-id.mjs",
+    "connector-policy.json"
+  ],
+  "openclaw": {
+    "extensions": [
+      "./index.mjs"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.10.9"
+    },
+    "build": {
+      "openclawVersion": "2026.10.9"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+ "id": "W09",
+ "name": "w09-amazon-usbc",
+ "site": "amazon.com",
+ "lane_default": "cloud",
+ "start_url": "https://www.amazon.com/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages): on amazon.com, search \"USB-C cable 6 ft\" and tell me the title and price of the first result not marked Sponsored.",
+ "hard_part": "Very long page, Sponsored labels",
+ "key_nodes": [
+  {
+   "id": "results",
+   "description": "Search results for USB-C cable 6 ft",
+   "evidence_any": [
+    "USB-C",
+    "6 ft"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "A non-sponsored result with its price",
+  "evidence_any": [
+   "$"
+  ]
+ },
+ "answer_check": {
+  "description": "A product title and $ price that is not a Sponsored listing",
+  "patterns": [
+   "\\$\\d+\\.\\d{2}",
+   "(?i)usb-?c"
+  ]
+ },
+ "exercises": [
+  "long page",
+  "sponsored labels",
+  "bot protection"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

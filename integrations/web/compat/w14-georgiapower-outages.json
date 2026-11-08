@@ -1,0 +1,45 @@
+{
+ "id": "W14",
+ "name": "w14-georgiapower-outages",
+ "site": "georgiapower.com",
+ "lane_default": "home",
+ "start_url": "https://www.georgiapower.com/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages): open Georgia Power's outage map and tell me whether there are current outages in Muscogee County.",
+ "hard_part": "Map drawn on a canvas: needs page vision",
+ "key_nodes": [
+  {
+   "id": "map",
+   "description": "Georgia Power's outage map",
+   "evidence_any": [
+    "Outage Map",
+    "outage"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Muscogee County outage status",
+  "evidence_any": [
+   "Muscogee"
+  ]
+ },
+ "answer_check": {
+  "description": "An outage count for Muscogee or no outages, read from the map or its side panel",
+  "patterns": [
+   "(?i)muscogee",
+   "(?i)\\d+\\s+(?:outages?|customers)|no (?:current )?outages"
+  ]
+ },
+ "exercises": [
+  "canvas map",
+  "page vision"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": false,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

@@ -1,0 +1,27 @@
+{
+ "manifest_version": 2,
+ "id": "memory",
+ "version": "1.0.0",
+ "title": "Conversation memory",
+ "description": "Nightly summaries, notes and search of the last 30 days; health turns are never kept.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {
+  "memory_search": {
+   "risk": "read"
+  },
+  "memory_note": {
+   "risk": "own_write"
+  }
+ },
+ "actions": {
+  "web": [
+   "recall_note",
+   "recall_search"
+  ]
+ }
+}

@@ -1,0 +1,33 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: https://services.leaveco.example/absence/report/review
+Subject: Report an absence | MyLeaveco
+Date: Fri, 06 Nov 2026 21:02:50 GMT
+MIME-Version: 1.0
+Content-Type: multipart/related;
+	type="text/html";
+	boundary="----MultipartBoundary--gfmCKm1pUwqrJdJT9holjtX5y1uHOLVBmgxGvT1Fp8----"
+
+
+------MultipartBoundary--gfmCKm1pUwqrJdJT9holjtX5y1uHOLVBmgxGvT1Fp8----
+Content-Type: text/html
+Content-ID: <frame-66D4228DA8A54450832E908832D68D3C@mhtml.blink>
+Content-Transfer-Encoding: quoted-printable
+Content-Location: https://services.leaveco.example/absence/report/review
+
+<!DOCTYPE html><html><head><meta http-equiv=3D"Content-Type" content=3D"tex=
+t/html; charset=3Dwindows-1252"><title>Report an absence | MyLeaveco</title></=
+head>
+<body><main><h1>Review your absence</h1>
+<div role=3D"alert" class=3D"warning">This absence overlaps an absence alre=
+ady reported for 11/03/2026. If you submit, the earlier entry will be repla=
+ced.</div>
+<p>Absence date: 11/03/2026 =C2=B7 Hours missed: 4 =C2=B7 Reason: Medical a=
+ppointment</p>
+<form action=3D"https://services.leaveco.example/absence/report/submit" method=3D"=
+post">
+
+<button type=3D"button">Go Back</button>
+<button type=3D"submit" aria-describedby=3D"w1">Submit</button>
+</form></main>
+</body></html>
+------MultipartBoundary--gfmCKm1pUwqrJdJT9holjtX5y1uHOLVBmgxGvT1Fp8------

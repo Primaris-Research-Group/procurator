@@ -1,0 +1,26 @@
+{
+ "name": "walgreens-store-hours",
+ "site": "walgreens.com",
+ "start_url": "https://www.walgreens.com/storelocator/find.jsp",
+ "intent": "Read pharmacy hours for the nearest store to 31901 (read only).",
+ "key_nodes": [
+  {
+   "id": "stores",
+   "description": "Store list",
+   "evidence_any": [
+    "31901",
+    "Pharmacy"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Hours read back",
+  "evidence_any": [
+   "Pharmacy hours",
+   "AM",
+   "PM"
+  ]
+ },
+ "fixtures": [],
+ "live_stops_before": "any final submit, payment, sign-in or consent (gates stay on)"
+}

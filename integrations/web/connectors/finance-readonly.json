@@ -1,0 +1,24 @@
+{
+ "manifest_version": 2,
+ "id": "finance-readonly",
+ "version": "1.0.0",
+ "title": "Read-only balances (SimpleFIN)",
+ "description": "Account balances only; no payments, no transfers.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "token"
+ },
+ "tools": {
+  "account_balances": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "balances"
+  ]
+ },
+ "setup": "SimpleFIN Bridge access URL (bin/set-web-key.sh simplefin)."
+}

@@ -1,0 +1,17 @@
+name: hygiene
+on: [push, pull_request]
+jobs:
+  secrets:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      # The gitleaks CLI (MIT) directly: the gitleaks GitHub Action needs a paid licence for organisation repositories.
+      - name: gitleaks (whole history)
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3 detect --source /repo --config /repo/.gitleaks.toml --redact --no-banner
+  literals:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: no personal literals in the tree
+        run: python3 bin/release.py literals

@@ -1,0 +1,24 @@
+{
+ "manifest_version": 2,
+ "id": "connections",
+ "version": "0.1.0",
+ "title": "Connections (OAuth store)",
+ "description": "One OAuth2 store: provider, account aliases, scopes, expiry; tokens only in secrets/.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {
+  "connections_list": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "oauth_list"
+  ]
+ },
+ "setup": "Settings > Connections."
+}

@@ -1,0 +1,37 @@
+{
+ "manifest_version": 2,
+ "id": "mcp-server",
+ "version": "1.0.0",
+ "title": "PROCURATOR as an MCP server (Claude, ChatGPT)",
+ "description": "Claude Desktop, Claude Code or ChatGPT queue tasks over SSH (bin/procurator-mcp.py); the owner starts each one with /mcprun.",
+ "class": "general",
+ "source": "core",
+ "plugin": "broker",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {},
+ "mcp_tools": {
+  "request_task": {
+   "risk": "draft"
+  },
+  "task_status": {
+   "risk": "read"
+  },
+  "recent_activity": {
+   "risk": "read"
+  },
+  "health_summary": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "health_digest",
+   "mcp_recent",
+   "mcp_request",
+   "mcp_status"
+  ]
+ },
+ "setup": "Claude Desktop config: {\"command\":\"ssh\",\"args\":[\"-T\",\"root@YOUR-DROPLET\",\"python3\",\"/opt/procurator/bin/procurator-mcp.py\"]}"
+}

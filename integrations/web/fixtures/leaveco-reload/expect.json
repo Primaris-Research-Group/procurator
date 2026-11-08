@@ -1,0 +1,10 @@
+{
+ "name": "Leaveco absence review after a reload: duplicate-entry warning, Submit must not be pressed again (Nov 5)",
+ "url": "https://services.leaveco.example/absence/report/review",
+ "site": "leaveco.example",
+ "reason": "seed",
+ "signed_in": true,
+ "controls": [],
+ "targets": [{"label": "Submit", "class": "final"}, {"label": "Go Back", "class": "navigate"}],
+ "verify": "submitted"
+}

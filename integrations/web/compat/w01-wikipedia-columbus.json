@@ -1,0 +1,47 @@
+{
+ "id": "W01",
+ "name": "w01-wikipedia-columbus",
+ "site": "wikipedia.org",
+ "lane_default": "cloud",
+ "start_url": "https://en.wikipedia.org/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages): on Wikipedia, find the 2020 census population of Columbus, Georgia and its area codes.",
+ "hard_part": "Control: search box, plain article",
+ "key_nodes": [
+  {
+   "id": "article",
+   "description": "The Columbus, Georgia article",
+   "evidence_any": [
+    "Columbus, Georgia",
+    "Muscogee County"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Infobox with population and area codes",
+  "evidence_any": [
+   "2020",
+   "706"
+  ]
+ },
+ "answer_check": {
+  "description": "A 2020 census population figure and the area codes 706/762",
+  "patterns": [
+   "\\b2\\d\\d,\\d{3}\\b",
+   "706",
+   "762"
+  ]
+ },
+ "exercises": [
+  "search box",
+  "article navigation"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": false,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

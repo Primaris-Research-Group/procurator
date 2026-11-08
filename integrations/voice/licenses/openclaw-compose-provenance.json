@@ -1,0 +1,15 @@
+{
+  "npm_spec": "@openclaw/voice-call@2026.10.9",
+  "tarball": "https://registry.npmjs.org/@openclaw/voice-call/-/voice-call-2026.10.9.tgz",
+  "integrity": "sha512-oVgeQFMhYFU8iroxhguCGygnUM4jsA2mlr4lLhcIczPorqoo4GY6DuzoIOdyC32WyLw4K+piDn8IGKo+tEjKFw==",
+  "staged_archive": "vendor/voice-call-2026.10.9.tgz",
+  "verified_before_install": true,
+  "installed_disabled": false,
+  "initial_install_source": "verified local archive",
+  "initial_installed_disabled": true,
+  "current_install_source": "npm",
+  "current_spec": "@openclaw/voice-call@2026.10.9",
+  "current_runtime_trust": "trusted-official",
+  "current_artifact_integrity_matches_original": true,
+  "trust_repair_reason": "Canonical official npm install restored verified provenance required by native summary generation and private report delivery"
+}

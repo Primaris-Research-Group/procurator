@@ -1,0 +1,25 @@
+{
+ "name": "cvs-flu-book-free",
+ "site": "cvs.com",
+ "start_url": "https://www.cvs.com/immunizations/flu",
+ "intent": "Book a free flu shot inside limits (free_booking_auto_confirm); live run only with the owner watching.",
+ "key_nodes": [
+  {
+   "id": "review",
+   "description": "Review page within limits",
+   "evidence_any": [
+    "Macon Rd"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Confirmation visible",
+  "evidence_any": [
+   "confirmed",
+   "all set",
+   "Confirmation number"
+  ]
+ },
+ "fixtures": [],
+ "live_stops_before": "any final submit, payment, sign-in or consent (gates stay on)"
+}

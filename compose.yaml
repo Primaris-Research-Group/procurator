@@ -1,0 +1,8 @@
+include:
+  - path:
+      - compose.upstream.yaml
+      - compose.private.yaml
+      - compose.google.yaml
+      - compose.mail.yaml
+      - compose.web.yaml
+      - compose.voice.yaml

@@ -1,0 +1,94 @@
+{
+ "manifest_version": 2,
+ "id": "missions",
+ "version": "1.0.0",
+ "title": "Missions and task packets",
+ "description": "Long multi-step work from owner-approved task packets; the Packet Composer.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {
+  "mission_get": {
+   "risk": "read"
+  },
+  "mission_list": {
+   "risk": "read"
+  },
+  "mission_read": {
+   "risk": "read"
+  },
+  "mission_log": {
+   "risk": "read"
+  },
+  "mission_brief": {
+   "risk": "read"
+  },
+  "mission_next": {
+   "risk": "read"
+  },
+  "mission_thread": {
+   "risk": "own_write"
+  },
+  "mission_fact": {
+   "risk": "own_write"
+  },
+  "mission_deadline": {
+   "risk": "own_write"
+  },
+  "mission_wake": {
+   "risk": "own_write"
+  },
+  "mission_watch": {
+   "risk": "own_write"
+  },
+  "mission_import": {
+   "risk": "own_write"
+  },
+  "mission_propose_done": {
+   "risk": "own_write"
+  },
+  "mission_question": {
+   "risk": "owner"
+  },
+  "mission_send_upload_link": {
+   "risk": "owner"
+  },
+  "mission_compose": {
+   "risk": "owner"
+  },
+  "mission_compose_attach": {
+   "risk": "draft"
+  }
+ },
+ "actions": {
+  "web": [
+   "composer_offer_attach",
+   "composer_start",
+   "mission_brief",
+   "mission_context",
+   "mission_deadline",
+   "mission_dry_run",
+   "mission_due",
+   "mission_fact",
+   "mission_get",
+   "mission_import",
+   "mission_list",
+   "mission_log",
+   "mission_next",
+   "mission_owner",
+   "mission_propose_done",
+   "mission_question",
+   "mission_read",
+   "mission_spend",
+   "mission_thread",
+   "mission_upload_link",
+   "mission_wake",
+   "mission_watch",
+   "mission_watch_due",
+   "mission_watch_seen"
+  ]
+ }
+}

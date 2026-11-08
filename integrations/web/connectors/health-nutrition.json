@@ -1,0 +1,74 @@
+{
+ "manifest_version": 2,
+ "id": "health-nutrition",
+ "version": "1.0.0",
+ "title": "Health: nutrition log",
+ "class": "health",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "api_key"
+ },
+ "tools": {
+  "health_nutrition_day": {
+   "risk": "read"
+  },
+  "health_nutrition_history": {
+   "risk": "read"
+  },
+  "health_nutrition_trends": {
+   "risk": "read"
+  },
+  "health_nutrition_food": {
+   "risk": "read"
+  },
+  "health_nutrition_food_search": {
+   "risk": "read"
+  },
+  "health_nutrition_estimate": {
+   "risk": "read"
+  },
+  "health_nutrition_log": {
+   "risk": "own_write"
+  },
+  "health_nutrition_edit": {
+   "risk": "own_write"
+  },
+  "health_nutrition_custom_food": {
+   "risk": "own_write"
+  },
+  "health_nutrition_measure": {
+   "risk": "own_write"
+  },
+  "health_nutrition_profile": {
+   "risk": "own_write"
+  },
+  "health_nutrition_goal": {
+   "risk": "own_write"
+  }
+ },
+ "actions": {
+  "web": [
+   "health_nutrition_custom_food",
+   "health_nutrition_day",
+   "health_nutrition_edit",
+   "health_nutrition_estimate",
+   "health_nutrition_food",
+   "health_nutrition_food_search",
+   "health_nutrition_goal",
+   "health_nutrition_history",
+   "health_nutrition_log",
+   "health_nutrition_measure",
+   "health_nutrition_profile",
+   "health_nutrition_trends"
+  ]
+ },
+ "setup": "Optional FoodData Central key.",
+ "min_data": [
+  "nutrition",
+  "body"
+ ],
+ "fixtures": [
+  "integrations/web/test_health_nutrition.py"
+ ]
+}

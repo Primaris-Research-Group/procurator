@@ -1,0 +1,9 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import {Assignments} from './assignments.mjs';
+import {voiceSnapshot,voiceProcessing,assertVoiceCurrent} from './voice-mode.mjs';
+test('realtime processing is explicit and unknown modes fail closed',()=>{assert.match(voiceProcessing(voiceSnapshot({voiceMode:'openai-realtime'})),/OpenAI realtime voice/);assert.throws(()=>voiceSnapshot({voiceMode:'unknown'}));assert.throws(()=>assertVoiceCurrent({voiceMode:'classic'},{voiceMode:'openai-realtime'}));});
+test('voice-provider change invalidates a pending approval before any dial',async t=>{const dir=fs.mkdtempSync(path.join(os.tmpdir(),'voice-mode-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const settings=path.join(dir,'settings.json');fs.writeFileSync(settings,JSON.stringify({testNumber:'+17865550123',maxDurationSeconds:60}));let placed=0;const calls=new Assignments(dir,async(method)=>{if(method==='sessions.describe')return {session:{key:'agent:main:main',sessionId:'owner',deliveryContext:{channel:'telegram',to:'100000001'}}};placed++;return {callId:'call',initiated:true};});const args={request_id:'voice-mode-test',to:'+17065550123',task:'Practice call',opening:'Hello, I am an AI assistant.',success_criteria:'Practice answers'};const r=calls.prepareAssignment(args);fs.writeFileSync(settings,JSON.stringify({testNumber:'+17865550123',maxDurationSeconds:60,voiceMode:'openai-realtime'}));await assert.rejects(calls.approve(r.id,r.hash),/processing changed/);assert.equal(placed,0);assert.throws(()=>calls.prepareAssignment(args),/different content/);const fresh=calls.prepareAssignment({...args,request_id:'voice-mode-test-v2'});assert.match(calls.review(fresh),/OpenAI realtime voice/);assert.notEqual(fresh.hash,r.hash);});

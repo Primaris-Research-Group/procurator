@@ -1,0 +1,41 @@
+{
+ "manifest_version": 2,
+ "id": "google-tasks",
+ "version": "1.0.0",
+ "title": "Google Tasks",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-mail",
+ "auth": {
+  "type": "oauth2",
+  "scopes": [
+   "tasks"
+  ]
+ },
+ "tools": {
+  "tasks_lists": {
+   "risk": "read"
+  },
+  "tasks_list": {
+   "risk": "read"
+  },
+  "tasks_add": {
+   "risk": "own_write"
+  },
+  "tasks_update": {
+   "risk": "own_write"
+  },
+  "tasks_complete": {
+   "risk": "own_write"
+  }
+ },
+ "actions": {
+  "mail": [
+   "tasks_add",
+   "tasks_complete",
+   "tasks_list",
+   "tasks_lists",
+   "tasks_update"
+  ]
+ }
+}

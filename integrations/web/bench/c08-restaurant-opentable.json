@@ -1,0 +1,42 @@
+{
+ "id": "C08",
+ "name": "c08-restaurant-opentable",
+ "site": "opentable.com",
+ "start_url": "https://www.opentable.com/",
+ "lanes": "both",
+ "expect": "browse",
+ "suites": [
+  "full"
+ ],
+ "intent": "On opentable.com, find restaurants in Midtown Atlanta with a table for 2 around 7:00 PM on {next_friday}. List three restaurants and the times each has available. Do not reserve.",
+ "hard_part": "Location + party + time pickers; availability chips",
+ "key_nodes": [
+  {
+   "id": "results",
+   "description": "Atlanta availability for 2 people",
+   "evidence_any": [
+    "Atlanta",
+    "Midtown"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Restaurants with time slots",
+  "evidence_any": [
+   "PM",
+   "pm"
+  ]
+ },
+ "answer_check": {
+  "description": "Restaurant names with times",
+  "patterns": [
+   "\\d{1,2}:\\d{2}"
+  ]
+ },
+ "budget": {
+  "steps": 20,
+  "minutes": 8
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, payment, consent, CAPTCHA or bot check, and every final/commit/protected button"
+}

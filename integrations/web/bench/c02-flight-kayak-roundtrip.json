@@ -1,0 +1,45 @@
+{
+ "id": "C02",
+ "name": "c02-flight-kayak-roundtrip",
+ "site": "kayak.com",
+ "start_url": "https://www.kayak.com/flights",
+ "lanes": "both",
+ "expect": "browse",
+ "suites": [
+  "quick",
+  "full"
+ ],
+ "intent": "On kayak.com, find the cheapest round trip from Atlanta (ATL) to Miami (MIA) leaving {date+30} and returning {date+33}, 1 adult, economy. Tell me the price, airline and departure times.",
+ "hard_part": "Results page with filters and ads; reading fares and times",
+ "key_nodes": [
+  {
+   "id": "results",
+   "description": "ATL to MIA flight results for the right dates",
+   "evidence_any": [
+    "ATL",
+    "MIA",
+    "Miami"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "A results list with prices",
+  "evidence_any": [
+   "$"
+  ]
+ },
+ "answer_check": {
+  "description": "A $ price, an airline name and times",
+  "patterns": [
+   "\\$\\s?\\d",
+   "(?i)delta|american|spirit|frontier|southwest|united|jetblue|airline",
+   "\\d{1,2}:\\d{2}"
+  ]
+ },
+ "budget": {
+  "steps": 20,
+  "minutes": 8
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, payment, consent, CAPTCHA or bot check, and every final/commit/protected button"
+}

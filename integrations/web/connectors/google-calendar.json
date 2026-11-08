@@ -1,0 +1,57 @@
+{
+ "manifest_version": 2,
+ "id": "google-calendar",
+ "version": "1.0.0",
+ "title": "Google Calendar",
+ "description": "Own events change at once; guests and deletions need /calapprove.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-mail",
+ "auth": {
+  "type": "oauth2",
+  "scopes": [
+   "calendar"
+  ]
+ },
+ "tools": {
+  "calendar_events": {
+   "risk": "read"
+  },
+  "calendar_calendars": {
+   "risk": "read"
+  },
+  "calendar_freebusy": {
+   "risk": "read"
+  },
+  "calendar_create_event": {
+   "risk": "own_write",
+   "outbound": true,
+   "destination": "guests",
+   "note": "with guests: /calapprove",
+   "audience": "person"
+  },
+  "calendar_update_event": {
+   "risk": "own_write",
+   "outbound": true,
+   "destination": "guests",
+   "audience": "person"
+  },
+  "calendar_request_delete": {
+   "risk": "owner"
+  },
+  "calendar_add_reminder": {
+   "risk": "own_write"
+  }
+ },
+ "actions": {
+  "mail": [
+   "cal_calendars",
+   "cal_create",
+   "cal_delete_request",
+   "cal_events",
+   "cal_freebusy",
+   "cal_reminder",
+   "cal_update"
+  ]
+ }
+}

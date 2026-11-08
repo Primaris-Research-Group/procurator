@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# PROCURATOR builder for the owner's Windows PC — run INSIDE Ubuntu on WSL2, as your normal Ubuntu user.
+# Generated __DATE__ with worker __VERSION__ (source: integrations/builder; regenerate: python3 integrations/builder/bundle.py).
+#   bash install-procurator-builder-wsl.sh            install or update (keeps your allowed repos)
+#   bash install-procurator-builder-wsl.sh --remove   stop the builder and remove the Windows scheduled task
+# What it does:
+#   1. checks Ubuntu: python3, git, ssh, gh (installs the missing ones with apt), GitHub sign-in, git name/email,
+#      Claude Code and/or Codex installed INSIDE Ubuntu
+#   2. makes this PC's builder key (it can only talk to the build relay on the droplet, as builder "windows")
+#   3. installs ~/Procurator/builder/worker.py and its config
+#   4. adds a Windows scheduled task "PROCURATOR builder" that starts the worker whenever you sign in to Windows
+#      (hidden; restarts it if it stops) and keeps the PC from sleeping while plugged in
+#   5. prints the one command to run on your Mac to register this PC
+# Your Claude, ChatGPT and GitHub sign-ins stay on this PC; nothing secret leaves it.
+set -euo pipefail
+HOST="${PROCURATOR_HOST:?set PROCURATOR_HOST to root@<your box>}"
+NAME="${BUILDER_NAME:-windows}"
+LABEL="${BUILDER_LABEL:-Windows PC}"
+BASE="$HOME/Procurator/builder"
+KEY="$HOME/.ssh/procurator_builder"
+TASK="PROCURATOR builder"
+grep -qi microsoft /proc/version 2>/dev/null || { echo "Run this inside Ubuntu on WSL (open the Ubuntu app on Windows)."; exit 1; }
+[ "$(id -u)" != 0 ] || { echo "Run as your normal Ubuntu user, not root (no sudo)."; exit 1; }
+DISTRO="${WSL_DISTRO_NAME:-Ubuntu}"
+PS="powershell.exe -NoProfile -ExecutionPolicy Bypass -Command"
+
+if [ "${1:-}" = "--remove" ]; then
+  $PS "Unregister-ScheduledTask -TaskName '$TASK' -Confirm:\$false -ErrorAction SilentlyContinue" || true
+  SU=$($PS "[Environment]::GetFolderPath('Startup')" 2>/dev/null | tr -d '\r') && [ -n "$SU" ] && rm -f "$(wslpath -u "$SU")/PROCURATOR builder.vbs" 2>/dev/null || true
+  pkill -f "$BASE/worker.py run" 2>/dev/null || true
+  echo "Builder stopped and the Windows task removed. On your Mac run: bash bin/setup-builder.sh --uninstall $NAME   (removes this PC's droplet key)"
+  exit 0
+fi
+
+# Only Linux tools count: Windows programs reachable from WSL (/mnt/c/...) must not be used by the builder.
+LINUX_PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -v '^/mnt/' | paste -sd: -)
+lin() { PATH="$LINUX_PATH" command -v "$1" 2>/dev/null || true; }
+
+echo "1/5 Checking Ubuntu"
+need=()
+[ -n "$(lin python3)" ] || need+=(python3)
+[ -n "$(lin git)" ] || need+=(git)
+[ -n "$(lin ssh)" ] || need+=(openssh-client)
+[ -n "$(lin gh)" ] || need+=(gh)
+if [ ${#need[@]} -gt 0 ]; then
+  echo "  Installing ${need[*]} (asks for your Ubuntu password)"
+  sudo apt-get update -qq && sudo apt-get install -y -qq "${need[@]}"
+fi
+GH=$(lin gh)
+"$GH" auth status >/dev/null 2>&1 || { echo "Sign in to GitHub first:  gh auth login   (GitHub.com, HTTPS, log in with a web browser). Then run this installer again."; exit 1; }
+git config --global user.email >/dev/null || { echo "Set your git identity first:  git config --global user.name \"Your Name\"  and  git config --global user.email you@example.com   Then run this again."; exit 1; }
+CLAUDE=$(lin claude); CODEX=$(lin codex)
+if [ -z "$CLAUDE$CODEX" ]; then
+  echo "No coding agent is installed inside Ubuntu yet. Install at least one, sign in, then run this installer again:"
+  echo "  Claude Code:  curl -fsSL https://claude.ai/install.sh | bash     then run  claude  once and sign in with your Claude account"
+  echo "  Codex:        install Node.js 20+ (for example: curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt-get install -y nodejs)"
+  echo "                then  npm install -g @openai/codex  and run  codex login  (sign in with ChatGPT)"
+  echo "  (A copy installed on Windows itself does not count: the builder runs inside Ubuntu.)"
+  exit 1
+fi
+echo "  python3 · git · gh (signed in) · Claude Code: ${CLAUDE:-not installed} · Codex: ${CODEX:-not installed}"
+[ -z "$CLAUDE" ] || { "$CLAUDE" --version >/dev/null 2>&1 && echo "  Claude Code runs (sign-in is checked on the first build)" || echo "  WARNING: claude did not run; run  claude  once and sign in."; }
+[ -z "$CODEX" ] || { "$CODEX" --version >/dev/null 2>&1 && echo "  Codex runs (sign-in is checked on the first build)" || echo "  WARNING: codex did not run; run  codex login  once."; }
+
+echo "2/5 Builder key for this PC"
+mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
+[ -f "$KEY" ] || ssh-keygen -q -t ed25519 -N '' -C "procurator-builder-$NAME" -f "$KEY"
+chmod 600 "$KEY"
+PUB=$(awk '{print $1" "$2}' "$KEY.pub")
+
+echo "3/5 Installing the worker in $BASE"
+mkdir -p "$BASE/logs" "$HOME/Procurator/builds"; chmod 700 "$HOME/Procurator" "$BASE"
+base64 -d > "$BASE/worker.py.new" <<'WORKER_B64'
+__WORKER_B64__
+WORKER_B64
+chmod 700 "$BASE/worker.py.new"; mv "$BASE/worker.py.new" "$BASE/worker.py"
+BUILDER_PATH="$LINUX_PATH" HOSTARG="$HOST" KEYARG="$KEY" NAMEARG="$NAME" LABELARG="$LABEL" CLAUDE="$CLAUDE" CODEX="$CODEX" GHARG="$GH" GITARG="$(lin git)" \
+python3 - "$BASE/config.json" <<'PY'
+import json,os,sys
+p=sys.argv[1]
+c=json.load(open(p)) if os.path.exists(p) else {}
+# accept-new: the droplet's host key is recorded on the first connection and checked on every later one.
+c['relay']=['ssh','-F','/dev/null','-i',os.environ['KEYARG'],'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ConnectTimeout=15',
+            '-o','ServerAliveInterval=15','-o','StrictHostKeyChecking=accept-new',os.environ['HOSTARG']]
+c['path']=os.environ['BUILDER_PATH'];c['name']=os.environ['NAMEARG'];c['label']=os.environ['LABELARG']
+c['tools']={'git':os.environ['GITARG'],'gh':os.environ['GHARG'],'claude':os.environ['CLAUDE'] or 'claude','codex':os.environ['CODEX'] or 'codex'}
+c.setdefault('default_agent','claude' if os.environ['CLAUDE'] else 'codex')
+c.setdefault('repos',{})
+tmp=p+'.tmp';json.dump(c,open(tmp,'w'),indent=2);os.chmod(tmp,0o600);os.replace(tmp,p)
+print('  config: %s (allowed repos: %s)'%(p,', '.join(c['repos']) or 'none yet'))
+PY
+
+# An update must not leave the old worker running the old code.
+pkill -f "$BASE/worker.py run" 2>/dev/null && { echo "  stopped the running builder (restarting with the new version)"; sleep 2; } || true
+echo "4/5 Windows scheduled task \"$TASK\" (starts the builder when you sign in to Windows)"
+PY3=$(lin python3)
+ARGS="-d $DISTRO -u $(whoami) --cd $HOME -- $PY3 $BASE/worker.py run"
+if $PS "
+\$ErrorActionPreference = 'Stop'
+\$inner = 'wsl.exe $ARGS'
+\$a = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -WindowStyle Hidden -Command ' + [char]34 + \$inner + [char]34)
+\$t = New-ScheduledTaskTrigger -AtLogOn -User \$env:USERNAME
+\$s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -MultipleInstances IgnoreNew
+Register-ScheduledTask -TaskName '$TASK' -Action \$a -Trigger \$t -Settings \$s -Description 'PROCURATOR code builder (WSL $DISTRO). Remove: bash install-procurator-builder-wsl.sh --remove' -Force | Out-Null
+Start-ScheduledTask -TaskName '$TASK'
+Write-Output '  task registered and started'
+" | tr -d '\r'; then :; else
+  # Fallback without Task Scheduler: a hidden starter in your Windows Startup folder (runs at every sign-in).
+  SU=$($PS "[Environment]::GetFolderPath('Startup')" | tr -d '\r')
+  if [ -n "$SU" ] && D=$(wslpath -u "$SU") && [ -d "$D" ]; then
+    printf 'CreateObject("WScript.Shell").Run "wsl.exe %s", 0, False\r\n' "$ARGS" > "$D/PROCURATOR builder.vbs"
+    (cd "$D" && wscript.exe "PROCURATOR builder.vbs") || true
+    echo "  Task Scheduler refused; installed a hidden starter in your Windows Startup folder instead (starts at every sign-in)."
+  else
+    echo "  Could not set up automatic start. Start the builder by hand for now:  nohup $PY3 $BASE/worker.py run >/dev/null 2>&1 &"
+  fi
+fi
+$PS "powercfg /change standby-timeout-ac 0" >/dev/null 2>&1 && echo "  sleep while plugged in: never (so builds can run any time)" \
+  || echo "  Could not change sleep settings: in Windows Settings > System > Power, set 'When plugged in, put my device to sleep after' to Never."
+sleep 5
+pgrep -f "$BASE/worker.py run" >/dev/null && echo "  builder is running" || echo "  builder is not running yet; it starts at your next Windows sign-in (or run the nohup command above)"
+
+echo "5/5 Register this PC (once). On your Mac, in the procurator-deploy folder, run:"
+echo
+echo "  bash bin/setup-builder.sh --enroll $NAME '$PUB'"
+echo
+echo "The builder here connects by itself within 30 seconds after that."
+echo "Then allow repos on this PC:  python3 ~/Procurator/builder/worker.py add-repo OWNER/NAME --test \"npm test\""
+echo "Check:  python3 ~/Procurator/builder/worker.py check     Logs: ~/Procurator/builder/logs/worker.log"
+echo "Keep Windows signed in (a locked screen is fine). After a Windows restart, sign in once and the builder starts again."

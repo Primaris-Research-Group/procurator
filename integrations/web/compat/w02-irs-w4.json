@@ -1,0 +1,46 @@
+{
+ "id": "W02",
+ "name": "w02-irs-w4",
+ "site": "irs.gov",
+ "lane_default": "home",
+ "start_url": "https://www.irs.gov/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages): on irs.gov, find the current Form W-4 and tell me its revision date and the title of Step 2.",
+ "hard_part": "Site menus, then reading a PDF",
+ "key_nodes": [
+  {
+   "id": "form_page",
+   "description": "The About Form W-4 page or the W-4 PDF",
+   "evidence_any": [
+    "Form W-4",
+    "Employee's Withholding Certificate"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "The W-4 itself, with its revision date",
+  "evidence_any": [
+   "Rev.",
+   "Step 2"
+  ]
+ },
+ "answer_check": {
+  "description": "A Rev. date and the Step 2 title (Multiple Jobs or Spouse Works)",
+  "patterns": [
+   "Rev\\.?\\s+\\w+",
+   "Multiple Jobs"
+  ]
+ },
+ "exercises": [
+  "site menus",
+  "PDF reading"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": false,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

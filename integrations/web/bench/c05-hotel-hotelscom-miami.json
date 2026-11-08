@@ -1,0 +1,42 @@
+{
+ "id": "C05",
+ "name": "c05-hotel-hotelscom-miami",
+ "site": "hotels.com",
+ "start_url": "https://www.hotels.com/",
+ "lanes": "both",
+ "expect": "browse",
+ "suites": [
+  "quick",
+  "full"
+ ],
+ "intent": "On hotels.com, find the cheapest hotel in Miami Beach, FL for check-in {next_friday} and check-out {next_sunday}, 2 adults, 1 room. Tell me the hotel name, the total price for both nights and its guest rating.",
+ "hard_part": "Destination autocomplete, date-range picker, sign-in banners, total vs nightly price",
+ "key_nodes": [
+  {
+   "id": "results",
+   "description": "Miami Beach results for the right dates",
+   "evidence_any": [
+    "Miami"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Hotel results with prices",
+  "evidence_any": [
+   "$"
+  ]
+ },
+ "answer_check": {
+  "description": "A hotel name and a $ total",
+  "patterns": [
+   "\\$\\s?\\d",
+   "(?i)hotel|inn|suites|resort|motel|lodge|hostel"
+  ]
+ },
+ "budget": {
+  "steps": 25,
+  "minutes": 8
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, payment, consent, CAPTCHA or bot check, and every final/commit/protected button"
+}

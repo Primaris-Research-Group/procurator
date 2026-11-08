@@ -1,0 +1,9 @@
+services:
+  openclaw-gateway:
+    environment:
+      PROCURATOR_EDITION: ${PROCURATOR_EDITION:-standard}
+      PROCURATOR_OWNER_ID: ${PROCURATOR_OWNER_ID:-}
+      PROCURATOR_PUBLIC_BASE: ${PROCURATOR_PUBLIC_BASE:-}
+    volumes:
+      - ./integrations/web-plugin:/opt/procurator/integrations/web-plugin:ro
+      - /run/procurator-web:/run/procurator-web

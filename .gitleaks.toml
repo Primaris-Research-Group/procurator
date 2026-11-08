@@ -1,0 +1,12 @@
+# gitleaks configuration for this repository: the default rules, plus one allow-list for the
+# synthetic, obviously fake secrets that the unit tests use to prove that redaction works.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake tokens in unit-test fixtures"
+paths = [
+  '''(^|/)test_[^/]*\.py$''',
+  '''\.test\.mjs$''',
+  '''(^|/)tests/''',
+]

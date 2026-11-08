@@ -1,0 +1,32 @@
+{
+ "manifest_version": 2,
+ "id": "google-output-mcp",
+ "version": "1.0.0",
+ "title": "Google Docs and Drive output (MCP)",
+ "description": "Creates documents and folders in the owner's own Drive.",
+ "class": "general",
+ "source": "core",
+ "plugin": "mcp",
+ "auth": {
+  "type": "oauth2",
+  "scopes": [
+   "drive.file"
+  ]
+ },
+ "tools": {},
+ "actions": {},
+ "mcp_tools": {
+  "workspace_info": {
+   "risk": "read"
+  },
+  "workspace_create_document": {
+   "risk": "own_write"
+  },
+  "workspace_create_folder": {
+   "risk": "own_write"
+  },
+  "workspace_move_file": {
+   "risk": "own_write"
+  }
+ }
+}

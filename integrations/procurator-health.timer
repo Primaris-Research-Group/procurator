@@ -1,0 +1,10 @@
+[Unit]
+Description=Record the owner runtime health every five minutes
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=15
+Persistent=true
+Unit=procurator-health.service
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,46 @@
+{
+ "id": "W04",
+ "name": "w04-usps-post-office-hours",
+ "site": "usps.com",
+ "lane_default": "cloud",
+ "start_url": "https://www.usps.com/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages): on usps.com, find the retail hours of the post office nearest 31901.",
+ "hard_part": "Location finder behind bot protection",
+ "key_nodes": [
+  {
+   "id": "locator",
+   "description": "Post office location results for 31901",
+   "evidence_any": [
+    "31901",
+    "Post Office"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "A location detail with retail hours",
+  "evidence_any": [
+   "Retail Hours",
+   "Sat"
+  ]
+ },
+ "answer_check": {
+  "description": "Weekday and Saturday hours and a Columbus address",
+  "patterns": [
+   "(?i)\\d{1,2}(?::\\d{2})?\\s*(?:a\\.?m\\.?|p\\.?m\\.?)|24 hours|closed",
+   "(?i)columbus"
+  ]
+ },
+ "exercises": [
+  "location finder",
+  "bot protection"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

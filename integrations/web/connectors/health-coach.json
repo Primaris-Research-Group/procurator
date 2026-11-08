@@ -1,0 +1,57 @@
+{
+ "manifest_version": 2,
+ "id": "health-coach",
+ "version": "1.0.0",
+ "title": "Health and wellness coach (optional)",
+ "description": "Questionnaire, weight-loss calorie plan from published guidance, energy balance, wellness metrics and fixed-text reminders. Off until /coach on.",
+ "class": "health",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {
+  "health_coach_status": {
+   "risk": "read"
+  },
+  "health_coach_questionnaire": {
+   "risk": "read"
+  },
+  "health_coach_answers": {
+   "risk": "own_write"
+  },
+  "health_coach_plan": {
+   "risk": "draft"
+  },
+  "health_coach_balance": {
+   "risk": "read"
+  },
+  "health_coach_metric": {
+   "risk": "own_write"
+  },
+  "health_coach_metrics": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "health_coach_answers",
+   "health_coach_balance",
+   "health_coach_metric",
+   "health_coach_metrics",
+   "health_coach_plan",
+   "health_coach_questionnaire",
+   "health_coach_status"
+  ]
+ },
+ "min_data": [
+  "nutrition",
+  "body",
+  "activity",
+  "vitals"
+ ],
+ "fixtures": [
+  "integrations/web/test_health_coach.py"
+ ],
+ "setup": "/healthadult yes, then /coach on."
+}

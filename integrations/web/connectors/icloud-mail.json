@@ -1,0 +1,42 @@
+{
+ "manifest_version": 2,
+ "id": "icloud-mail",
+ "version": "1.0.0",
+ "title": "iCloud Mail",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-mail",
+ "auth": {
+  "type": "token"
+ },
+ "tools": {
+  "mail_icloud_folders": {
+   "risk": "read"
+  },
+  "mail_icloud_read": {
+   "risk": "read"
+  },
+  "mail_icloud_recent": {
+   "risk": "read"
+  },
+  "mail_icloud_search": {
+   "risk": "read"
+  },
+  "mail_save_icloud_draft": {
+   "risk": "draft",
+   "outbound": true,
+   "destination": "to",
+   "audience": "person"
+  }
+ },
+ "actions": {
+  "mail": [
+   "icloud_folders",
+   "icloud_list",
+   "icloud_read",
+   "icloud_search",
+   "save_icloud_draft"
+  ]
+ },
+ "setup": "bin/connect-icloud.py (app-specific password)."
+}

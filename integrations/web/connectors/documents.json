@@ -1,0 +1,39 @@
+{
+ "manifest_version": 2,
+ "id": "documents",
+ "version": "1.0.0",
+ "title": "Whole documents and project files",
+ "description": "Drive files, Gmail attachments and ChatGPT/Claude project files read in pages.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "oauth2",
+  "scopes": [
+   "drive.readonly (via gog)",
+   "gmail.readonly (via gog)"
+  ]
+ },
+ "tools": {
+  "drive_read_document": {
+   "risk": "read"
+  },
+  "gmail_attachment_read": {
+   "risk": "read"
+  },
+  "project_sources": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "doc_ingest",
+   "doc_page",
+   "project_chat",
+   "project_chats",
+   "project_connect",
+   "project_file",
+   "project_ready"
+  ]
+ }
+}

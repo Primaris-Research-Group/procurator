@@ -1,0 +1,48 @@
+{
+  "id": "procurator-mail",
+  "name": "PROCURATOR Mail",
+  "version": "0.8.0",
+  "description": "Email (Gmail + iCloud), Google Calendar and Google Tasks with exact owner approval in Telegram.",
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "contracts": {
+    "tools": [
+      "mail_accounts",
+      "mail_create_draft",
+      "mail_get_draft",
+      "mail_request_review",
+      "mail_cancel_draft",
+      "mail_icloud_recent",
+      "mail_icloud_search",
+      "mail_icloud_folders",
+      "mail_icloud_read",
+      "mail_save_icloud_draft",
+      "mail_manage",
+      "mail_request_trash",
+      "calendar_events",
+      "calendar_calendars",
+      "calendar_freebusy",
+      "calendar_create_event",
+      "calendar_update_event",
+      "calendar_request_delete",
+      "tasks_lists",
+      "tasks_list",
+      "tasks_add",
+      "tasks_update",
+      "tasks_complete",
+      "mail_assistant_inbox",
+      "calendar_add_reminder",
+      "contacts_search",
+      "sms_draft",
+      "sms_review",
+      "sms_status",
+      "sms_cancel"
+    ]
+  }
+}

@@ -1,0 +1,51 @@
+name: tests
+on: [push, pull_request]
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        suite: [integrations/web, integrations/mail, integrations/builder, integrations/browser-worker, integrations/voice-http, integrations/icloud-relay, tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: unit tests (${{ matrix.suite }})
+        env: {PROCURATOR_NO_KEYS: '1', PROCURATOR_EDITION: x}
+        run: |
+          cd "${{ matrix.suite }}" && python3 -m unittest -q
+  plugins:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        plugin: [web-plugin, mail-plugin, voice-plugin]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: playwright for the browser runner tests
+        if: matrix.plugin == 'web-plugin'
+        run: npm i -g playwright-core@1.64.1 && npx -y playwright@1.64.1 install --with-deps chromium   # the version the gateway image ships
+      - name: node --test (${{ matrix.plugin }})
+        env: {PROCURATOR_EDITION: x}
+        # The runner loads Playwright from the gateway image's /app/node_modules unless told otherwise.
+        run: |
+          export PROCURATOR_PLAYWRIGHT_PATH="$(npm root -g)/playwright-core"
+          cd integrations/${{ matrix.plugin }} && node --test
+  derived-files:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: connector policy is fresh
+        run: |
+          python3 integrations/web/connectors.py policy /tmp/policy.json
+          for p in web-plugin mail-plugin voice-plugin; do diff -q /tmp/policy.json integrations/$p/connector-policy.json; done
+      - name: installer bundles are fresh
+        run: |
+          cp -r integrations /tmp/before
+          python3 integrations/browser-worker/bundle.py && python3 integrations/builder/bundle.py
+          diff -r /tmp/before/browser-worker/dist integrations/browser-worker/dist && diff -r /tmp/before/builder/dist integrations/builder/dist
+      - name: versions agree with RELEASE.json
+        run: python3 bin/release.py check
+      - name: shell syntax
+        run: for f in bin/*.sh; do bash -n "$f"; done

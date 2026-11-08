@@ -1,0 +1,46 @@
+{
+ "id": "C13",
+ "name": "c13-store-hours-costco",
+ "site": "costco.com",
+ "start_url": "https://www.costco.com/warehouse-locations",
+ "lanes": "both",
+ "expect": "browse",
+ "suites": [
+  "full"
+ ],
+ "intent": "On costco.com, find the Costco warehouse nearest ZIP 31901 (Columbus, GA) and tell me its Sunday hours and gas station hours.",
+ "hard_part": "Store locator with ZIP search; bot protection",
+ "key_nodes": [
+  {
+   "id": "warehouse",
+   "description": "A Columbus-area warehouse page",
+   "evidence_any": [
+    "Columbus",
+    "31909",
+    "GA"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Hours visible",
+  "evidence_any": [
+   "am",
+   "AM",
+   "pm",
+   "PM"
+  ]
+ },
+ "answer_check": {
+  "description": "Sunday hours",
+  "patterns": [
+   "(?i)sun",
+   "(?i)\\d{1,2}(?::\\d{2})?\\s*(?:a\\.?m\\.?|p\\.?m\\.?)|24 hours|closed"
+  ]
+ },
+ "budget": {
+  "steps": 15,
+  "minutes": 6
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, payment, consent, CAPTCHA or bot check, and every final/commit/protected button"
+}

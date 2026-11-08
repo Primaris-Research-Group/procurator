@@ -1,0 +1,29 @@
+[Unit]
+Description=the owner classic inbound voice answer compatibility bridge
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+# 0.30.0: the public base URL (PROCURATOR_PUBLIC_BASE) and edition the installer wrote; optional (the leading - ).
+EnvironmentFile=-/etc/procurator/instance.env
+Type=simple
+User=procurator-voice-http
+Group=procurator-voice-http
+ExecStart=/usr/bin/python3 /opt/procurator/integrations/voice-http/bridge.py
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/procurator-voice-http/admissions
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=127.0.0.1/32
+MemoryMax=96M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

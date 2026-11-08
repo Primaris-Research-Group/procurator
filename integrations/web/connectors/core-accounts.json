@@ -1,0 +1,35 @@
+{
+ "manifest_version": 2,
+ "id": "core-accounts",
+ "version": "0.1.0",
+ "title": "Apple and Google accounts",
+ "description": "Accounts connected on the dashboard's Accounts tab (one email + one app password each) and the Apple Calendar and Contacts tools they unlock. Mail tools stay in the mail plugin; Google Calendar/Contacts/Tasks come through the Google OAuth connection.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {
+  "accounts_list": {
+   "risk": "read"
+  },
+  "calendar_apple_events": {
+   "risk": "read"
+  },
+  "contacts_apple_search": {
+   "risk": "read"
+  },
+  "calendar_apple_create_event": {
+   "risk": "own_write"
+  }
+ },
+ "actions": {
+  "web": [
+   "accounts_list",
+   "calendar_apple_events",
+   "contacts_apple_search",
+   "calendar_apple_create_event"
+  ]
+ }
+}

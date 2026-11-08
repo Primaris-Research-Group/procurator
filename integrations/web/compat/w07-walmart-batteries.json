@@ -1,0 +1,47 @@
+{
+ "id": "W07",
+ "name": "w07-walmart-batteries",
+ "site": "walmart.com",
+ "lane_default": "home",
+ "start_url": "https://www.walmart.com/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages): on walmart.com, find the price of Energizer AA batteries, 24 pack, and whether the store nearest 31901 has it for pickup.",
+ "hard_part": "Press-and-hold bot check is likely",
+ "key_nodes": [
+  {
+   "id": "product",
+   "description": "An Energizer AA 24-pack listing",
+   "evidence_any": [
+    "Energizer",
+    "AA"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Price and pickup status, or a bot-check page reported",
+  "evidence_any": [
+   "$",
+   "Pickup"
+  ]
+ },
+ "answer_check": {
+  "description": "A $ price and pickup status, or a clean Blocked report",
+  "patterns": [
+   "\\$\\d+\\.\\d{2}",
+   "(?i)pickup|robot|press and hold|blocked"
+  ]
+ },
+ "exercises": [
+  "product search",
+  "bot protection",
+  "long page"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

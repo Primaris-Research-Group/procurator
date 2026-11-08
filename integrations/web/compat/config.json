@@ -1,0 +1,6 @@
+{
+ "judge_model": "claude-haiku-5-5",
+ "judge_max_tokens": 500,
+ "location": "ZIP 31901 (Columbus, GA)",
+ "note": "Web compatibility battery (0.19.1). Read-only errands; the judge checks the final page and the assistant's answer. Pinned like regression/config.json."
+}

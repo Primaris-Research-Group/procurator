@@ -1,0 +1,46 @@
+{
+ "manifest_version": 2,
+ "id": "health-pharmacy",
+ "version": "1.0.0",
+ "title": "Health: pharmacy refills",
+ "class": "health",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "token"
+ },
+ "tools": {
+  "health_pharmacy_list": {
+   "risk": "read"
+  },
+  "health_pharmacy_eligibility": {
+   "risk": "read"
+  },
+  "health_pharmacy_refill": {
+   "risk": "external",
+   "audience": "person"
+  },
+  "health_pharmacy_refill_status": {
+   "risk": "read"
+  },
+  "health_pharmacy_reconcile": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "health_pharmacy_eligibility",
+   "health_pharmacy_list",
+   "health_pharmacy_reconcile",
+   "health_pharmacy_refill",
+   "health_pharmacy_refill_status"
+  ]
+ },
+ "min_data": [
+  "prescriptions"
+ ],
+ "fixtures": [
+  "integrations/web/mock_rx.py",
+  "integrations/web/test_health_pharmacy.py"
+ ]
+}

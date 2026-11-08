@@ -1,0 +1,30 @@
+{
+ "manifest_version": 2,
+ "id": "inbound-events",
+ "version": "0.1.0",
+ "title": "Inbound events (always untrusted)",
+ "description": "Comments, DMs and channel messages by webhook: signed, screened for prompt injection, fenced as untrusted. They notify and wake owner-routed packets; never act.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "token",
+  "scopes": [
+   "per-source signing secret in secrets/webhooks/<source>"
+  ]
+ },
+ "tools": {
+  "events_list": {
+   "risk": "read"
+  },
+  "events_get": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "events_list",
+   "events_get"
+  ]
+ }
+}

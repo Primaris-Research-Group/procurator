@@ -1,0 +1,24 @@
+[Unit]
+Description=the owner private browser action and Telegram approval broker
+After=network-online.target docker.service
+Wants=network-online.target
+[Service]
+# 0.30.0: the public base URL (PROCURATOR_PUBLIC_BASE) and edition the installer wrote; optional (the leading - ).
+EnvironmentFile=-/etc/procurator/instance.env
+Type=simple
+ExecStart=/usr/bin/python3 /opt/procurator/integrations/web/broker.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+RuntimeDirectory=procurator-web
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
+StateDirectory=procurator-web
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/procurator-web /run/procurator-web
+[Install]
+WantedBy=multi-user.target

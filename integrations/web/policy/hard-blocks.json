@@ -1,0 +1,10 @@
+{
+ "version": 1,
+ "note": "Actions refused whatever the grants, approvals or packet say (plan v2 B4). Read by home_policy.py; Phase 3a moves this file to the repository's policy/ folder and the module loader reads it for every module.",
+ "rules": [
+  {"id": "safety-devices-stay-on", "tier": "safety", "actions": ["disable", "mute", "silence", "snooze", "remove", "bypass", "off", "unpair", "reset"],
+   "reason": "Smoke, carbon monoxide and leak devices are never disabled, muted, snoozed or removed by the assistant. Do it yourself at the device or in its app."},
+  {"id": "cameras-off-needs-live-approval", "tier": "access", "actions": ["disable", "off", "privacy_on"], "origins_refused": ["packet", "schedule", "event", "composer", "mcp"],
+   "reason": "Turning cameras off is an access action: only with your live approval in Telegram, never from a packet, schedule or incoming event."}
+ ]
+}

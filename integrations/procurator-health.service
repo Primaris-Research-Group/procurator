@@ -1,0 +1,15 @@
+[Unit]
+Description=the owner local administrative runtime health snapshot
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/procurator/bin/admin-health.py
+UMask=0077
+StateDirectory=procurator-health
+StateDirectoryMode=0700
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/procurator-health
+TimeoutStartSec=45

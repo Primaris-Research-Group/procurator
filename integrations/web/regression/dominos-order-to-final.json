@@ -1,0 +1,32 @@
+{
+ "name": "dominos-order-to-final",
+ "site": "dominos.com",
+ "start_url": "https://www.dominos.com/",
+ "intent": "Large pepperoni for delivery inside a $40 limit; stop at Place Order.",
+ "key_nodes": [
+  {
+   "id": "menu",
+   "description": "Menu",
+   "evidence_any": [
+    "Specialty Pizzas",
+    "Pizza"
+   ]
+  },
+  {
+   "id": "cart",
+   "description": "Cart",
+   "evidence_any": [
+    "Checkout"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Checkout with total under the limit, not placed",
+  "evidence_any": [
+   "Total",
+   "Place Order"
+  ]
+ },
+ "fixtures": [],
+ "live_stops_before": "any final submit, payment, sign-in or consent (gates stay on)"
+}

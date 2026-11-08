@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROCURATOR by PHI — the administrative agent that acts only with your approval</title>
+<meta name="description" content="PROCURATOR is a self-hosted autonomous assistant for professionals. It handles email, calls, web errands, bookings and long projects, and cannot send, dial, submit, buy or book anything you have not approved.">
+<meta property="og:title" content="PROCURATOR by PHI">
+<meta property="og:description" content="Your administrative work, done end to end. Every action that commits you waits for your approval.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ---------- tokens ---------- */
+:root{
+  --ink:#1C2260; --ink-2:#2A3387; --ink-3:#3B46B5;
+  --paper:#F4F6FC; --paper-2:#E9EDFA; --white:#FFFFFF;
+  --saffron:#FFB224; --saffron-2:#FFD27A;
+  --mint:#36D6B0; --mint-2:#CFF6EC;
+  --coral:#FF5A5F; --coral-2:#FFD9DA;
+  --peri:#A7B3FF; --peri-2:#DDE2FF;
+  --text:#1A1F3D; --muted:#5B6391; --line:#CDD3EE;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --max:1180px; --gutter:clamp(20px,4vw,48px);
+  --r-sm:6px; --r:14px; --r-lg:22px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:var(--body);color:var(--text);background:var(--paper);line-height:1.55;font-size:17px;-webkit-font-smoothing:antialiased}
+img,svg{display:block;max-width:100%}
+a{color:inherit}
+h1,h2,h3,h4{font-family:var(--display);margin:0;line-height:1.05;letter-spacing:-0.01em;font-variation-settings:"wdth" 92}
+h1{font-size:clamp(40px,6.2vw,76px);font-weight:700}
+h2{font-size:clamp(30px,4.2vw,52px);font-weight:700}
+h3{font-size:clamp(20px,2.2vw,26px);font-weight:600;line-height:1.2}
+p{margin:0 0 1em}
+.lede{font-size:clamp(18px,1.6vw,22px);color:var(--muted);max-width:62ch}
+.measure{max-width:68ch}
+code,kbd{font-family:var(--mono);font-size:.92em}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 var(--gutter)}
+section{padding:clamp(64px,9vw,120px) 0}
+.band-ink{background:var(--ink);color:var(--white)}
+.band-ink .lede,.band-ink .muted{color:var(--peri)}
+.band-paper2{background:var(--paper-2)}
+.muted{color:var(--muted)}
+.eyebrow{font-family:var(--display);font-weight:600;color:var(--ink-3);font-size:15px;letter-spacing:.01em;margin-bottom:14px}
+.band-ink .eyebrow{color:var(--saffron)}
+:focus-visible{outline:3px solid var(--saffron);outline-offset:3px;border-radius:4px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border-radius:999px;font-weight:600;text-decoration:none;border:2px solid transparent;font-size:16px;line-height:1;transition:transform .12s ease,background .12s ease}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--saffron);color:var(--ink);border-color:var(--saffron)}
+.btn-primary:hover{background:var(--saffron-2);border-color:var(--saffron-2)}
+.btn-ghost{background:transparent;color:var(--white);border-color:rgba(255,255,255,.45)}
+.btn-ghost:hover{border-color:var(--white)}
+.btn-ink{background:var(--ink);color:var(--white);border-color:var(--ink)}
+.btn-ink:hover{background:var(--ink-2);border-color:var(--ink-2)}
+.btn-outline{background:transparent;color:var(--ink);border-color:var(--ink)}
+.btn-outline:hover{background:var(--peri-2)}
+.btn svg{width:18px;height:18px}
+
+/* ---------- nav ---------- */
+.nav{position:sticky;top:0;z-index:50;background:rgba(28,34,96,.92);backdrop-filter:saturate(140%) blur(8px);color:var(--white)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:68px;gap:20px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.02em}
+.brand span{white-space:nowrap}
+.brand small{font-family:var(--body);font-weight:500;font-size:13px;color:var(--peri);letter-spacing:0}
+.seal{width:34px;height:34px;flex:none}
+.nav-links{display:flex;gap:22px;align-items:center;font-size:15px}
+.nav-links a{text-decoration:none;color:var(--peri)}
+.nav-links a:hover{color:var(--white)}
+.nav-links a.btn-primary,.nav-links a.btn-primary:hover{color:var(--ink)}
+.nav .btn{padding:10px 16px;font-size:14px}
+@media (max-width:900px){.nav-links a:not(.btn){display:none}}
+
+/* ---------- hero ---------- */
+.hero{background:var(--ink);color:var(--white);padding:clamp(56px,8vw,110px) 0 clamp(64px,8vw,110px);position:relative;overflow:hidden}
+.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(32px,5vw,72px);align-items:center}
+.hero h1{max-width:12ch}
+.hero h1 .line2{display:block;color:var(--saffron)}
+.hero .lede{color:var(--peri);margin:26px 0 34px;max-width:52ch}
+.hero-ctas{display:flex;gap:14px;flex-wrap:wrap}
+.hero-note{margin-top:22px;font-size:14px;color:var(--peri)}
+.hero-note code{color:var(--white);background:rgba(255,255,255,.08);padding:3px 8px;border-radius:6px}
+@media (max-width:900px){.hero .wrap{grid-template-columns:1fr}}
+
+/* the one memorable element: a Telegram exchange that ends in a receipt */
+.chat{background:var(--paper);color:var(--text);border-radius:var(--r-lg);padding:18px;box-shadow:0 30px 80px rgba(0,0,0,.35);max-width:520px;margin-left:auto;position:relative}
+.chat-head{display:flex;align-items:center;gap:10px;padding:4px 6px 14px;border-bottom:1px solid var(--line);font-size:14px;color:var(--muted)}
+.chat-head .dot{width:10px;height:10px;border-radius:50%;background:var(--mint)}
+.chat-body{display:flex;flex-direction:column;gap:12px;padding-top:14px;min-height:430px}
+.msg{max-width:88%;padding:12px 14px;border-radius:16px;font-size:15px;line-height:1.45;opacity:0;transform:translateY(8px)}
+.msg.show{opacity:1;transform:none;transition:opacity .35s ease,transform .35s ease}
+.msg.owner{align-self:flex-end;background:var(--ink);color:var(--white);border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--white);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg .tag{display:inline-block;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.04em;color:var(--ink-3);margin-bottom:6px}
+.msg ul{margin:6px 0 8px;padding-left:18px}
+.msg li{margin:2px 0}
+.msg code{display:inline-block;background:var(--paper-2);color:var(--ink);padding:3px 8px;border-radius:6px;font-size:13px;margin-top:4px;word-break:break-all}
+.msg.owner code{background:rgba(255,255,255,.12);color:var(--white)}
+.receipt{align-self:stretch;background:var(--white);border:1.5px dashed var(--ink-3);border-radius:var(--r);padding:14px 16px;font-size:14px;position:relative;opacity:0;transform:translateY(8px)}
+.receipt.show{opacity:1;transform:none;transition:opacity .4s ease,transform .4s ease}
+.receipt dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0}
+.receipt dt{color:var(--muted)}
+.receipt dd{margin:0;font-family:var(--mono);font-size:13px}
+.stamp{position:absolute;right:14px;top:-14px;background:var(--saffron);color:var(--ink);font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.08em;padding:6px 10px;border-radius:6px;transform:rotate(-6deg) scale(.6);opacity:0}
+.receipt.show .stamp{animation:stamp .45s cubic-bezier(.2,1.6,.4,1) .35s forwards}
+@keyframes stamp{to{transform:rotate(-6deg) scale(1);opacity:1}}
+.replay{margin-left:auto;font-size:12px;color:var(--muted);background:none;border:0;cursor:pointer;font-family:var(--body);text-decoration:underline;padding:0}
+@media (prefers-reduced-motion:reduce){
+  .msg,.receipt{opacity:1;transform:none;transition:none}
+  .receipt .stamp{animation:none;opacity:1;transform:rotate(-6deg)}
+  html{scroll-behavior:auto}
+}
+
+/* ---------- ledger line ---------- */
+.ledger{padding:28px 0;border-bottom:1px solid var(--line);background:var(--white)}
+.ledger p{margin:0;font-family:var(--display);font-size:clamp(17px,1.9vw,22px);font-weight:500;color:var(--ink);line-height:1.5}
+.ledger b{font-weight:800;color:var(--ink-3)}
+.ledger small{display:block;margin-top:6px;font-family:var(--body);font-size:13px;color:var(--muted);font-weight:400}
+
+/* ---------- differentiators ---------- */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,4vw,56px)}
+@media (max-width:860px){.grid-2{grid-template-columns:1fr}}
+.feat{display:grid;grid-template-columns:52px 1fr;gap:18px;padding:26px 0;border-top:1px solid var(--line)}
+.feat:last-child{border-bottom:1px solid var(--line)}
+.feat .ico{width:52px;height:52px;border-radius:14px;display:grid;place-items:center}
+.feat .ico svg{width:26px;height:26px}
+.ico.saffron{background:var(--saffron-2)} .ico.mint{background:var(--mint-2)} .ico.peri{background:var(--peri-2)} .ico.coral{background:var(--coral-2)}
+.feat h3{margin-bottom:8px}
+.feat p{margin:0;color:var(--muted)}
+.feat .vs{margin-top:10px;font-size:14px;color:var(--ink-3);font-weight:500}
+
+/* ---------- approvals ---------- */
+.classes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:36px}
+@media (max-width:900px){.classes{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.classes{grid-template-columns:1fr}}
+.cls{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:var(--r);padding:18px}
+.cls .k{font-family:var(--mono);font-size:13px;padding:3px 8px;border-radius:6px;display:inline-block;margin-bottom:10px;color:var(--ink)}
+.k.read{background:var(--mint)} .k.draft{background:var(--peri)} .k.own{background:var(--saffron-2)} .k.owner{background:var(--saffron)} .k.ext{background:var(--coral)} .k.pub{background:#fff}
+.cls p{margin:0;font-size:15px;color:var(--peri)}
+.never{margin-top:44px;display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,4vw,56px);align-items:start}
+@media (max-width:860px){.never{grid-template-columns:1fr}}
+.never ul{margin:0;padding:0;list-style:none}
+.never li{padding:10px 0 10px 30px;position:relative;border-top:1px solid rgba(255,255,255,.14);color:var(--white)}
+.never li::before{content:"";position:absolute;left:0;top:16px;width:16px;height:16px;border-radius:50%;background:var(--coral)}
+.never li:last-child{border-bottom:1px solid rgba(255,255,255,.14)}
+
+/* ---------- comparison ---------- */
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--white);margin-top:32px}
+table{border-collapse:collapse;width:100%;min-width:860px;font-size:15px}
+th,td{padding:14px 16px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+thead th{font-family:var(--display);font-weight:700;background:var(--paper-2);position:sticky;top:0}
+thead th:first-child{min-width:170px}
+tbody tr:last-child td{border-bottom:0}
+td.us{background:#FFF8E6;font-weight:500}
+th.us{background:var(--saffron-2)}
+td .y{color:#0E7F62;font-weight:600} td .n{color:#B5282C;font-weight:600} td .p{color:var(--muted)}
+.foot{font-size:13px;color:var(--muted);margin-top:14px}
+.foot ol{margin:6px 0 0;padding-left:18px}
+.foot li{margin:3px 0}
+
+/* ---------- editions ---------- */
+.editions{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:36px}
+@media (max-width:860px){.editions{grid-template-columns:1fr}}
+.ed{position:relative;border-radius:var(--r-lg);padding:30px 28px 26px;border:1px solid var(--line);background:var(--white)}
+.ed.x{background:var(--ink);color:var(--white);border-color:var(--ink)}
+.ed .tag{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.ed.x .tag{color:var(--saffron)}
+.ed h3{font-size:30px;margin:8px 0 6px;letter-spacing:-.01em}
+.ed h3 small{font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.06em;vertical-align:middle;margin-left:8px;padding:3px 8px;border-radius:6px;background:var(--saffron);color:var(--ink)}
+.ed .for{color:var(--muted);margin:0 0 18px;font-size:16px}
+.ed.x .for{color:var(--peri)}
+.ed ul{list-style:none;margin:0;padding:0}
+.ed li{position:relative;padding:9px 0 9px 24px;border-top:1px solid var(--line);font-size:15px;line-height:1.5}
+.ed.x li{border-top-color:rgba(255,255,255,.14)}
+.ed.x li b{color:var(--saffron-2)}
+.ed li code{font-family:var(--mono);font-size:13px;padding:1px 5px;border-radius:4px;background:var(--paper-2);color:var(--ink)}
+.ed.x li code{background:rgba(255,255,255,.12);color:var(--white)}
+.ed li::before{content:"✓";position:absolute;left:0;top:9px;font-weight:800;color:#0E7F62}
+.ed.x li::before{color:var(--mint)}
+.ed li.plus::before{content:"+";color:var(--saffron)}
+.ed .box{margin-top:18px;font-family:var(--mono);font-size:13px;color:var(--muted)}
+.ed.x .box{color:var(--peri)}
+.ed .box b{color:inherit}
+.ed pre{margin-top:14px;font-size:13px}
+.ed.x pre{background:#121846}
+.pill.x{background:var(--saffron);color:var(--ink)}
+.ed-note{margin-top:22px;color:var(--muted);font-size:15px;max-width:70ch}
+
+/* ---------- install ---------- */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:36px}
+@media (max-width:900px){.steps{grid-template-columns:1fr}}
+.step{background:var(--white);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px}
+.step .n{width:34px;height:34px;border-radius:50%;background:var(--ink);color:var(--saffron);font-family:var(--display);font-weight:800;display:grid;place-items:center;margin-bottom:14px}
+.step p{margin:0;color:var(--muted)}
+pre{margin:0;background:var(--ink);color:#EAF0FF;border-radius:var(--r);padding:18px 20px;overflow:auto;font-family:var(--mono);font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+pre .c{color:var(--peri)}
+.install-cmd{margin-top:28px}
+
+/* ---------- everything ---------- */
+.cols{columns:3;column-gap:40px;margin-top:30px}
+@media (max-width:1000px){.cols{columns:2}}
+@media (max-width:640px){.cols{columns:1}}
+.cols h4{break-after:avoid;font-size:17px;margin:0 0 8px;color:var(--ink)}
+.cols ul{margin:0 0 26px;padding:0;list-style:none;break-inside:avoid}
+.cols li{padding:6px 0;border-top:1px solid var(--line);font-size:15px}
+.cols li span{color:var(--muted)}
+.pill{display:inline-block;font-size:11px;font-family:var(--display);font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:5px;vertical-align:middle;margin-left:6px}
+.pill.soon{background:var(--peri-2);color:var(--ink-2)}
+.pill.opt{background:var(--mint-2);color:#0E7F62}
+
+/* ---------- roadmap ---------- */
+.road{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:36px}
+@media (max-width:1000px){.road{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.road{grid-template-columns:1fr}}
+.road div{border-left:4px solid var(--saffron);padding:4px 0 4px 18px}
+.road h3{font-size:18px;margin-bottom:8px}
+.road p{margin:0;color:var(--peri);font-size:15px}
+.road .when{font-family:var(--mono);font-size:12px;color:var(--saffron);margin-bottom:6px}
+
+/* ---------- research + recruit ---------- */
+.research{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(28px,5vw,72px);align-items:start}
+@media (max-width:900px){.research{grid-template-columns:1fr}}
+.themes{margin:28px 0 0;padding:0;list-style:none}
+.themes li{padding:16px 0;border-top:1px solid var(--line)}
+.themes li:last-child{border-bottom:1px solid var(--line)}
+.themes b{display:block;font-family:var(--display);font-weight:600;font-size:18px;margin-bottom:4px}
+.themes span{color:var(--muted);font-size:15px}
+.portal{background:var(--white);border:1px solid var(--line);border-radius:var(--r-lg);padding:28px;position:sticky;top:90px}
+.portal h3{margin-bottom:6px}
+.portal p.muted{font-size:15px}
+form .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){form .row{grid-template-columns:1fr}}
+label{display:block;font-size:14px;font-weight:500;margin:14px 0 6px}
+input,select,textarea{width:100%;font:inherit;font-size:15px;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);color:var(--text)}
+input:focus,select:focus,textarea:focus{border-color:var(--ink-3);outline:none;box-shadow:0 0 0 3px var(--peri-2)}
+textarea{min-height:92px;resize:vertical}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:6px}
+.checks label{display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0;font-size:14px}
+.checks input{width:auto;margin-top:3px}
+.form-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:18px;flex-wrap:wrap}
+.form-foot small{color:var(--muted);font-size:12px;max-width:34ch}
+.msgbox{margin-top:12px;font-size:14px;padding:10px 12px;border-radius:10px;display:none}
+.msgbox.ok{display:block;background:var(--mint-2);color:#0E5E49}
+.msgbox.bad{display:block;background:var(--coral-2);color:#8A1E22}
+
+/* ---------- cta + footer ---------- */
+.cta{text-align:left}
+.cta .wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:40px;align-items:center}
+@media (max-width:860px){.cta .wrap{grid-template-columns:1fr}}
+footer{background:var(--ink);color:var(--peri);padding:40px 0;font-size:14px}
+footer .wrap{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:28px}
+@media (max-width:860px){footer .wrap{grid-template-columns:1fr}}
+footer a{color:var(--white)}
+footer ul{list-style:none;margin:10px 0 0;padding:0}
+footer li{margin:6px 0}
+.status{border-left:3px solid var(--saffron);padding-left:14px;color:var(--white)}
+</style>
+</head>
+<body>
+
+<header class="nav" aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="PROCURATOR by PHI, home">
+      <svg class="seal" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#FFB224"/><path d="M14 25l6 6 14-14" fill="none" stroke="#1C2260" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PROCURATOR <small>by PHI</small></span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#why">Why</a><a href="#approvals">Approvals</a><a href="#compare">Compare</a><a href="#editions">Editions</a><a href="#install">Install</a><a href="#everything">Features</a><a href="#research">Research</a><a href="#physicians">Physicians</a>
+      <a class="btn btn-primary" data-config="github" href="https://github.com/" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg>
+        GitHub
+      </a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <h1>Your admin, done.<span class="line2">Nothing sent without you.</span></h1>
+      <p class="lede">PROCURATOR reads and drafts your mail, calls businesses, fills signed-in web forms, books and buys within your limits, and runs long projects while you work. Every action that commits you waits for your own approval, bound to the exact content. It runs on a server you own.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="#install">Install in 20 minutes</a>
+        <a class="btn btn-ghost" data-config="github" href="https://github.com/" rel="noopener">Read the source</a>
+      </div>
+      <p class="hero-note">Open source. Your keys, your server, your data. Works from Telegram today; <code>/panel</code> opens the dashboard.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation" id="chat">
+      <div class="chat-head"><span class="dot" aria-hidden="true"></span> PROCURATOR · Telegram <button class="replay" id="replay" type="button">Replay</button></div>
+      <div class="chat-body" id="chatBody">
+        <div class="msg owner">Book my car inspection at Northside Auto for Thursday afternoon. Under $80, and use the number from my contacts.</div>
+        <div class="msg bot"><span class="tag">BROWSER TASK REVIEW</span>
+          <div>northsideauto.example — book an inspection</div>
+          <ul><li>Thursday, 1–5 PM · state inspection</li><li>Spend limit $80 · no account changes</li><li>Phone from Contacts: •••• 0100</li></ul>
+          Approve with <code>/webtask 7c41e2b0f93a51d8 a9f2c7e14b06d3ee</code>
+        </div>
+        <div class="msg owner"><code>/webtask 7c41e2b0f93a51d8 a9f2c7e14b06d3ee</code></div>
+        <div class="msg bot">Started. One final review before I submit.</div>
+        <div class="receipt" aria-label="Approval receipt">
+          <span class="stamp">APPROVED</span>
+          <dl>
+            <dt>Booked</dt><dd>Thu 2:30 PM · confirmation NA-48213</dd>
+            <dt>Charged</dt><dd>$0 now · $69 at the shop</dd>
+            <dt>Bound to</dt><dd>sha256 a9f2c7e1…d3ee</dd>
+            <dt>Logged</dt><dd>/activity · calendar event added</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== LEDGER LINE ===== -->
+<div class="ledger">
+  <div class="wrap">
+    <p>In the current build, PROCURATOR exposes <b>180 tools</b> across <b>36 connectors</b>, answers <b>97 owner commands</b>, and ships with <b>over 1,000 automated tests</b> — and every one of its 8 outbound tools is bound to an approval the model cannot forge.
+    <small>Counts from the 0.29.0 source, November 2026. Tool risk classes are declared in connector manifests; undeclared tools do not run.</small></p>
+  </div>
+</div>
+
+<!-- ===== WHY ===== -->
+<section id="why">
+  <div class="wrap">
+    <p class="eyebrow">Why professionals choose PROCURATOR</p>
+    <h2 class="measure">Other agents ask you to trust the model. This one doesn't need you to.</h2>
+    <p class="lede" style="margin-top:18px">The approval layer lives in a broker the model cannot route around. The model drafts; you approve the exact draft; the broker executes once. That single design choice is what makes it safe to give an agent your inbox, your phone line and your logins.</p>
+
+    <div class="grid-2" style="margin-top:44px">
+      <div>
+        <div class="feat">
+          <div class="ico saffron"><svg viewBox="0 0 24 24" fill="none" stroke="#1C2260" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <div><h3>Approvals bound to exact content</h3><p>A send, call, submit, purchase, build or post is approved with a code tied to a hash of what will happen. Change a recipient, an amount or a file and the approval is void. Replays are no-ops. Timeouts never retry blindly.</p><p class="vs">Hosted agents describe "permissions"; here the check is cryptographic and outside the model.</p></div>
+        </div>
+        <div class="feat">
+          <div class="ico mint"><svg viewBox="0 0 24 24" fill="none" stroke="#0E7F62" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8"/></svg></div>
+          <div><h3>Your own server, your own keys</h3><p>One small Linux box you control. Credentials stay in 0600 files the model never reads; passwords are typed by you on a private page, never by the assistant. Nothing is used to train anyone's model.</p><p class="vs">Consumer agents run on the vendor's cloud computer and some train on your data by default.</p></div>
+        </div>
+        <div class="feat">
+          <div class="ico peri"><svg viewBox="0 0 24 24" fill="none" stroke="#2A3387" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2z"/></svg></div>
+          <div><h3>Real phone calls, with you listening in</h3><p>It calls from its own number, works through automated menus, waits on hold and talks to the representative. Listen-in mode calls you first so you can merge in silently and take over at any moment; it keeps transcribing after you do.</p><p class="vs">No Pixel required, no call-center humans behind the curtain, no telemarketing-grade scripts.</p></div>
+        </div>
+        <div class="feat">
+          <div class="ico coral"><svg viewBox="0 0 24 24" fill="none" stroke="#B5282C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <div><h3>Signed-in web errands that can't double-submit</h3><p>Cloud browser or Chrome on your home PC. The broker classifies every click; final buttons need your review; a final is never pressed twice unless the page proves the first press failed. Banks are never browsed. CAPTCHAs are yours.</p><p class="vs">Most agents stop at public pages; the ones that log in rely on the model to decide what is "consequential".</p></div>
+        </div>
+      </div>
+      <div>
+        <div class="feat">
+          <div class="ico saffron"><svg viewBox="0 0 24 24" fill="none" stroke="#1C2260" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></div>
+          <div><h3>Long projects as task packets</h3><p>Describe a multi-week goal in Markdown — or let the Packet Composer build it with you. The orchestrator works in sessions inside your waking hours, asks questions in chat, stops at every approval, records evidence, and proposes "done" only with proof. Budgets per packet.</p><p class="vs">Always-on agents keep working; PROCURATOR keeps working <em>and</em> keeps receipts.</p></div>
+        </div>
+        <div class="feat">
+          <div class="ico mint"><svg viewBox="0 0 24 24" fill="none" stroke="#0E7F62" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg></div>
+          <div><h3>Code built on your machines, as draft PRs</h3><p>Ask for a change; approve the exact build; your Mac or Windows PC runs Claude Code or Codex on your own subscription and opens a draft pull request. Nothing merges or deploys by itself. The server never runs commands on your computers.</p><p class="vs">Unique among personal agents.</p></div>
+        </div>
+        <div class="feat">
+          <div class="ico peri"><svg viewBox="0 0 24 24" fill="none" stroke="#2A3387" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-7-10a7 7 0 0 1 14 0c0 5.6-7 10-7 10z"/><path d="M9 11h6M12 8v6"/></svg></div>
+          <div><h3>Health logistics under consent</h3><p>Optional module for adults: appointments, portal reads, refills and nutrition logging run under grants you approve with exact limits. "Requested" is never reported as "booked". Health details never reach memory, posts or anyone outside the granted institution.</p><p class="vs">Logistics, not medical advice. A clinician and emergency notice is always shown.</p></div>
+        </div>
+        <div class="feat">
+          <div class="ico coral"><svg viewBox="0 0 24 24" fill="none" stroke="#B5282C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div>
+          <div><h3>Any model, visible cost</h3><p>Switch between Claude and GPT models in one tap, per chat, per packet, per task. A daily budget warns at 80% and pauses background work at 100%. Routine browser steps run on a cheap model; decisions run on a strong one.</p><p class="vs">Subscriptions hide the meter. PROCURATOR shows it.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== APPROVALS ===== -->
+<section id="approvals" class="band-ink">
+  <div class="wrap">
+    <p class="eyebrow">Approvals, by design</p>
+    <h2 class="measure">Six classes of action. Only one of them runs without asking.</h2>
+    <p class="lede" style="margin-top:18px">Every tool declares its class in a manifest. The broker enforces the class; the model can neither lower it nor invent a tool the manifest does not list.</p>
+    <div class="classes">
+      <div class="cls"><span class="k read">read</span><p>Looks things up and runs freely: calendars, inbox search, page snapshots, quotes, evidence search.</p></div>
+      <div class="cls"><span class="k draft">draft</span><p>Prepares something for you to approve. Nothing leaves: an email draft, a call brief, a post preview.</p></div>
+      <div class="cls"><span class="k own">own_write</span><p>Changes your own things, no third party involved: a task, a reminder, an event in your own calendar.</p></div>
+      <div class="cls"><span class="k owner">owner</span><p>Sends you a review or acts on owner-only state. The review carries the exact line you approve with.</p></div>
+      <div class="cls"><span class="k ext">external</span><p>Reaches a third party — only after your hash-bound approval: a browser submission, a portal booking.</p></div>
+      <div class="cls"><span class="k pub">public</span><p>Publishes to an audience after <code>/postsend</code>; account, text and media are all bound into the approval.</p></div>
+    </div>
+
+    <div class="never">
+      <div>
+        <h3 style="color:#fff;margin-bottom:12px">What it never does, whatever it is told</h3>
+        <p class="muted">These are hard blocks in code, not instructions in a prompt. Page text, emails, documents and callers are treated as data, never as instructions.</p>
+      </div>
+      <ul>
+        <li>Browse banks, brokerages or payment apps</li>
+        <li>Type or store passwords, one-time codes, card or Social Security numbers</li>
+        <li>Solve CAPTCHAs</li>
+        <li>Press a final button twice, or press any final without your approval</li>
+        <li>Move money outside your own store accounts and your cap</li>
+        <li>Permanently delete email, sign documents, or merge and deploy code</li>
+        <li>Disable a smoke, CO or leak detector (home module)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== COMPARE ===== -->
+<section id="compare">
+  <div class="wrap">
+    <p class="eyebrow">How it compares</p>
+    <h2 class="measure">The 2026 agent market, side by side</h2>
+    <p class="lede" style="margin-top:18px">Consumer agents arrived this autumn from Meta, OpenAI and Google. They are impressive, and they are built around one trade: convenience for custody. PROCURATOR takes the other side.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th></th><th class="us">PROCURATOR</th><th>Meta Muse</th><th>OpenAI dots</th><th>Gemini "Call for Me"</th><th>Instinct</th><th>Hosted executive assistants</th>
+        </tr></thead>
+        <tbody>
+          <tr><th>Where it runs</th><td class="us"><span class="y">Your own server</span>; open source</td><td>Meta's cloud (Muse Secure VM)</td><td>OpenAI's cloud computer per dot</td><td>Your Pixel phone + Google cloud</td><td>Vendor's persistent cloud computer</td><td>Vendor cloud</td></tr>
+          <tr><th>Who approves consequential actions</th><td class="us"><span class="y">You, with a code bound to the exact content</span>, checked outside the model</td><td>Model asks; review on checkout</td><td>Custom rules + automated "auto-review"</td><td>Pre-call summary; no transactions allowed</td><td>You hand it accounts and cards; ask it to check first</td><td>"Acts within the permissions you give it"</td></tr>
+          <tr><th>Phone calls</th><td class="us"><span class="y">Own number, menus, hold, listen-in and takeover</span>, transcript</td><td>Beta; some calls reportedly placed by human contractors, later rolled back<sup>1</sup></td><td>Text/Slack/Teams; no calling announced</td><td>Businesses only, US, Pixel 11 beta<sup>2</sup></td><td>Concierge calls, early access</td><td>Yes, metered minutes</td></tr>
+          <tr><th>Signed-in web tasks</th><td class="us"><span class="y">Yes</span>; broker-classified clicks; never-list; no double submit</td><td>Yes, in Meta's VM</td><td>Yes, on its cloud browser</td><td>—</td><td>Yes, with handed-over credentials</td><td>Varies; browser extensions</td></tr>
+          <tr><th>Credentials</th><td class="us"><span class="y">Never reach the model</span>; you sign in on a private page</td><td>Stored by Meta</td><td>Stored by OpenAI (sign-in flow hides passwords from the model)</td><td>Google account</td><td>Stored by vendor</td><td>Stored by vendor</td></tr>
+          <tr><th>Price</th><td class="us"><span class="y">Free software</span>; you pay your server and model usage, with budgets</td><td>Free tier; Power $20 / Maximum $100 per month<sup>3</sup></td><td>Included with ChatGPT Pro from $100 per month<sup>4</sup></td><td>Google AI subscription</td><td>Free, invite-only</td><td>$30–$200 per user per month, credit-metered</td></tr>
+          <tr><th>Training on your data</th><td class="us"><span class="y">No</span>; nothing leaves your box except the model calls you configure</td><td>Per Meta terms</td><td>Per OpenAI terms</td><td>Per Google terms</td><td>On by default; opt-out<sup>5</sup></td><td>Varies</td></tr>
+          <tr><th>Long-running projects</th><td class="us"><span class="y">Task packets</span> with budgets, evidence and proof of completion</td><td>Multi-step tasks</td><td>"Keeps the task" between chats</td><td>—</td><td>Standing instructions</td><td>Routines</td></tr>
+          <tr><th>Code builds</th><td class="us"><span class="y">On your Mac or PC, as a draft PR</span>; never merged by itself <span class="pill x">X</span></td><td>—</td><td>Hands off to Codex (uses your quota)</td><td>—</td><td>—</td><td>—</td></tr>
+          <tr><th>Health logistics</th><td class="us"><span class="y">Consent grants</span>; portals, refills, nutrition; kept out of memory</td><td>—</td><td>—</td><td>Won't share health information on calls</td><td>Zocdoc connection</td><td>Enterprise BAAs only</td></tr>
+          <tr><th>Model choice</th><td class="us"><span class="y">Claude and GPT families</span>, switch per chat / packet / task</td><td>Muse Spark</td><td>GPT-6 Astra</td><td>Gemini</td><td>Vendor's</td><td>Vendor's, credits burn faster on stronger models</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="foot">
+      Facts as publicly reported in September–November 2026; vendor products change quickly. Where a cell is blank, no public description was found.
+      <ol>
+        <li>404 Media, "Meta Tests Muse AI Agent Calls That Are Actually Made By Humans in a Call Center"; Reuters via BNN Bloomberg on the "human concierge" test and rollback.</li>
+        <li>Google / TechCrunch, 24 Sept 2026: Call for Me rolls out to Pixel 11 owners with a Gemini subscription in the US on the Phone by Google beta; no emergency, financial or sensitive-information calls.</li>
+        <li>Meta plan tiers as listed on Meta's pricing page, Oct 2026.</li>
+        <li>OpenAI, DevDay 29 Sept 2026: dots included with Pro, Business Premium and Enterprise; ChatGPT agent mode was retired in August 2026 in favour of Work and a cloud browser.</li>
+        <li>Instinct settings page: model training on by default with opt-out, per published reviews (Sept 2026).</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ===== INSTALL ===== -->
+<!-- ===== EDITIONS ===== -->
+<section id="editions">
+  <div class="wrap">
+    <p class="eyebrow">Two editions, one codebase</p>
+    <h2 class="measure">PROCURATOR for professionals. PROCURATOR‑X for the ones who also ship code.</h2>
+    <p class="lede" style="margin-top:18px">Same brokers, same approvals, same installer, same version number. The developer edition adds a coding orchestrator that turns a task packet into a draft pull request on your own machine. On a standard box those tools do not exist — not hidden, absent from the policy — so the assistant is never tempted to half‑use them.</p>
+    <div class="editions">
+      <div class="ed">
+        <div class="tag">Standard edition</div>
+        <h3>PROCURATOR</h3>
+        <p class="for">For physicians, lawyers, consultants, founders — anyone whose admin eats their week.</p>
+        <ul>
+          <li>Email (Gmail + iCloud), calendar, contacts and tasks</li>
+          <li>Phone calls to businesses and agencies, with listen‑in</li>
+          <li>Web errands on public and signed‑in sites, one approval per task</li>
+          <li>Task packets for multi‑week projects, with the Packet Composer</li>
+          <li>Research, documents, news, clinical calculators and evidence</li>
+          <li>Health logistics under consent grants (optional module)</li>
+          <li>Dashboard, usage meter, model choice, activity ledger</li>
+        </ul>
+        <div class="box">Recommended box: <b>4 GB</b> · 180 tools · 97 commands</div>
+<pre>sudo bash install.sh --repo … --domain …</pre>
+      </div>
+      <div class="ed x">
+        <div class="tag">Developer edition</div>
+        <h3>PROCURATOR‑X <small>DEVELOPER PREVIEW</small></h3>
+        <p class="for">Everything in PROCURATOR, plus a remote coding orchestrator for complex, multi‑step engineering tasks.</p>
+        <ul>
+          <li>Everything in the standard edition</li>
+          <li class="plus">Code builds: a packet becomes a <b>draft pull request</b> on your Mac or PC, with Claude Code or Codex on your own subscription</li>
+          <li class="plus">Builder relay: your machines pull work over a restricted key; the server never runs commands on them</li>
+          <li class="plus">Composer "coding" packets, <code>/buildapprove</code> with the exact repo, branch and goal bound in the hash</li>
+          <li class="plus">Builds tab on the dashboard; nothing is merged or deployed by itself</li>
+          <li class="plus">Planned: a box‑side coding sandbox with its own container and volume, walled off from mail and account secrets</li>
+        </ul>
+        <div class="box">Recommended box: <b>8 GB</b> · adds the <b>builds</b> connector</div>
+<pre>sudo bash install.sh --repo … --domain … <span class="c">--edition x</span></pre>
+      </div>
+    </div>
+    <p class="ed-note">Switch later by re‑running the installer with the other edition; your state, accounts and packets stay. The edition is a one‑line flag the brokers and the plugin gate both read (<code>EDITION</code> / <code>PROCURATOR_EDITION</code>).</p>
+  </div>
+</section>
+
+<!-- ===== INSTALL ===== -->
+<section id="install" class="band-paper2">
+  <div class="wrap">
+    <p class="eyebrow">Install</p>
+    <h2 class="measure">Paste one line. Open one link. Tap Start.</h2>
+    <p class="lede" style="margin-top:18px">No terminal skills, no domain, no pairing codes. The installer sets up everything on your server, turns on HTTPS, and hands you a one-time link; the rest happens in your browser and on your phone. About twenty minutes, most of it waiting.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Rent a server, paste one line</h3><p>Any Ubuntu 24.04 server (a $24/month 4 GB droplet). Paste the command into its console: Docker, the pinned gateway, the brokers and automatic HTTPS — on your domain, or a free one it makes for you.</p></div>
+      <div class="step"><div class="n">2</div><h3>Open your setup link</h3><p>Paste your AI key and the token BotFather gives you. Then tap <b>Open my bot</b> on your phone and press <b>Start</b> — that's the pairing. From then on, only you can talk to it.</p></div>
+      <div class="step"><div class="n">3</div><h3>Connect Apple and Google</h3><p>The link lands you on Accounts, with step-by-step help: one email and one app password lights up Mail, Calendar and Contacts; Google sign-in adds Calendar, Contacts, Tasks and Drive.</p></div>
+    </div>
+    <div class="install-cmd">
+<pre><span class="c"># in your server's console (DigitalOcean: Droplet › Console)</span>
+curl -fsSL <span data-config="installurl">https://raw.githubusercontent.com/Primaris-Research-Group/procurator/main/bin/install.sh</span> | sudo bash -s -- \
+  --repo <span data-config="repourl">https://github.com/Primaris-Research-Group/procurator.git</span>   <span class="c"># add --edition x for PROCURATOR-X</span>
+
+<span class="c"># it ends with your one-time setup link:</span>
+<span class="c">#   https://203-0-113-10.sslip.io/assistant/dashboard/setup/…</span></pre>
+    </div>
+    <p class="muted" style="margin-top:18px;font-size:15px">Prefer a terminal? Answer <b>T</b> when the installer asks — same three steps, typed hidden. Optional add-ons on your own computers: the home browser lane, code builders (PROCURATOR‑X) and the iPhone Health companion; each pulls work from your server over a restricted key, and the server never runs commands on your machines.</p>
+  </div>
+</section>
+
+<!-- ===== EVERYTHING ===== -->
+<section id="everything">
+  <div class="wrap">
+    <p class="eyebrow">Everything it does</p>
+    <h2 class="measure">One assistant across your whole working life</h2>
+    <div class="cols">
+      <h4>Email and messages</h4>
+      <ul>
+        <li>Gmail and iCloud: read, search, draft; send after <code>/mailsend</code></li>
+        <li>Trash after approval; never permanent deletion</li>
+        <li>Attachments bound by hash into the approval</li>
+        <li>Owner Bcc/Cc on mail to others</li>
+        <li>Its own address for sign-ups and confirmations</li>
+        <li>Text messages after <code>/smssend</code> <span class="pill opt">optional</span></li>
+      </ul>
+      <h4>Calendar, contacts, tasks</h4>
+      <ul>
+        <li>Google Calendar: read, free time, own events; guests and deletions approved</li>
+        <li>Google Tasks and Contacts</li>
+        <li>Apple Calendar and Contacts from one app-specific password</li>
+        <li>Reminders in Telegram; a daily morning brief</li>
+      </ul>
+      <h4>Phone</h4>
+      <ul>
+        <li>Outbound calls from its own number after approval</li>
+        <li>Automated menus, hold, representative conversation</li>
+        <li>Listen-in with silent takeover and transcript</li>
+        <li>Summaries and paged transcripts; incoming message-taking</li>
+      </ul>
+      <h4>Web</h4>
+      <ul>
+        <li>Cloud browser and home-PC Chrome lane, per-site rules</li>
+        <li>Research, autonomous and exact task modes</li>
+        <li>Saved sign-ins you perform yourself; form filling from a private vault</li>
+        <li>Purchases on your store accounts within your cap</li>
+        <li>Page-vision checks, playbooks, traces, weekly metrics</li>
+        <li>Graded test batteries you can run yourself</li>
+      </ul>
+      <h4>Projects</h4>
+      <ul>
+        <li>Task packets with typed steps, budgets, cadence and done-when evidence</li>
+        <li>Packet Composer: a guided chat that writes the packet</li>
+        <li>Event triggers that wake a packet</li>
+        <li>Dashboard with live view, usage, machines, activity and a Telegram Mini App</li>
+      </ul>
+      <h4>Knowledge</h4>
+      <ul>
+        <li>Reference library: documents, notes, exports of earlier AI chats</li>
+        <li>30-day conversation memory you can search and forget</li>
+        <li>Whole Google documents; ChatGPT and Claude project files</li>
+        <li>News, quotes, places, clinician lookup, evidence search, 32 clinical calculators</li>
+      </ul>
+      <h4>Engineering</h4>
+      <ul>
+        <li>Builds on your Mac or PC ending in draft PRs <span class="pill x">PROCURATOR‑X</span></li>
+        <li>PROCURATOR as an MCP server for Claude Desktop, Claude Code or ChatGPT</li>
+        <li>Model switching per chat, packet and task; daily budgets</li>
+      </ul>
+      <h4>Health <span class="pill opt">optional · 18+</span></h4>
+      <ul>
+        <li>Consent grants with exact limits</li>
+        <li>Patient portals (SMART on FHIR), booking, cancel, reschedule</li>
+        <li>Pharmacy refills, nutrition log, Apple Health sync</li>
+        <li>Wellness coach; private receipts; nothing in memory</li>
+      </ul>
+      <h4>Coming next</h4>
+      <ul>
+        <li>Mac companion: Reminders, Notes, iMessage, sending from your Mac <span class="pill soon">planned</span></li>
+        <li>Mac Setup app and setup pages <span class="pill soon">in development</span></li>
+        <li>Slack, Microsoft 365, LinkedIn, Home Assistant connectors <span class="pill soon">planned</span></li>
+        <li>Phone app on the versioned API <span class="pill soon">planned</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ROADMAP ===== -->
+<section class="band-ink">
+  <div class="wrap">
+    <p class="eyebrow">Roadmap</p>
+    <h2 class="measure">Where it is going</h2>
+    <div class="road">
+      <div><div class="when">Now · 0.30</div><h3>Two editions, one public tree</h3><p>PROCURATOR and PROCURATOR‑X from one codebase: de‑personalised, Apache‑2.0, CI‑tested, exportable with a denylist gate. Accounts connect in two minutes.</p></div>
+      <div><div class="when">Next · 0.31</div><h3>Install from the repository</h3><p>Fresh server to working bot in under fifteen minutes; GHCR images; <code>procurator upgrade / doctor / backup</code>. PROCURATOR‑X gets its box‑side coding sandbox.</p></div>
+      <div><div class="when">Then</div><h3>Mac companion and Setup app</h3><p>Reminders, Notes, iMessage and Mac-side sending; a double-clickable installer that creates the server for you.</p></div>
+      <div><div class="when">Later</div><h3>Connectors and a phone app</h3><p>Slack and Microsoft 365, home devices through Home Assistant, social accounts, and a native app on the versioned API.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== RESEARCH + PHYSICIANS ===== -->
+<section id="research" class="band-paper2">
+  <div class="wrap research">
+    <div>
+      <p class="eyebrow">Ongoing research</p>
+      <h2 class="measure">PROCURATOR is a research instrument as much as a product</h2>
+      <p class="lede" style="margin-top:18px">PHI is a non-profit studying how autonomous agents can take administrative load off clinicians and other professionals without taking decisions away from them. The code is the experiment; the batteries are the measurements.</p>
+      <ul class="themes">
+        <li><b>Approval-bound agency</b><span>Can an agent be useful when every consequential action is bound to a human's exact approval? We measure completion, approvals per task and cost per task across live sites, phone menus and portals.</span></li>
+        <li><b>Consent-scoped health logistics</b><span>Grants with explicit limits, one effect per operation, "requested" kept distinct from "confirmed", and data labels enforced at every outbound path. Synthetic EHR and pharmacy services make the whole flow testable.</span></li>
+        <li><b>Autonomous web browsing benchmarks</b><span>Graded batteries over consumer sites on cloud and home browsers, offline fixtures from real failures, and a regression set with a fixed judge.</span></li>
+        <li><b>Small models for clinical documentation</b><span>Companion work on local, small-model documentation assistants and the verification needed before a note is trusted.</span></li>
+        <li><b>Primary-care workflow optimisation</b><span>Multi-arm studies of AI-augmented primary care workflows, from pre-visit preparation to follow-up.</span></li>
+      </ul>
+    </div>
+
+    <aside class="portal" id="physicians" aria-labelledby="portalTitle">
+      <h3 id="portalTitle">Physicians: contribute to the research</h3>
+      <p class="muted">We are recruiting clinicians to help define grants, review workflows, grade batteries and co-author. Remote, flexible, acknowledged. Tell us what you'd like to work on.</p>
+      <form id="recruit" novalidate>
+        <div class="row">
+          <div><label for="f-name">Name</label><input id="f-name" name="name" autocomplete="name" required></div>
+          <div><label for="f-email">Email</label><input id="f-email" name="email" type="email" autocomplete="email" required></div>
+        </div>
+        <div class="row">
+          <div><label for="f-spec">Specialty</label><input id="f-spec" name="specialty" placeholder="Internal medicine, family medicine, …"></div>
+          <div><label for="f-stage">Stage</label><select id="f-stage" name="stage"><option>Attending</option><option>Resident or fellow</option><option>Medical student</option><option>Clinical informatics</option><option>Other clinician</option></select></div>
+        </div>
+        <label>Interests</label>
+        <div class="checks">
+          <label><input type="checkbox" name="interest" value="grants">Consent and grant design</label>
+          <label><input type="checkbox" name="interest" value="workflows">Primary-care workflows</label>
+          <label><input type="checkbox" name="interest" value="batteries">Grading agent batteries</label>
+          <label><input type="checkbox" name="interest" value="documentation">Clinical documentation AI</label>
+          <label><input type="checkbox" name="interest" value="nutrition">Nutrition spec review</label>
+          <label><input type="checkbox" name="interest" value="authoring">Co-authoring papers</label>
+        </div>
+        <label for="f-hours">Availability</label>
+        <select id="f-hours" name="hours"><option>1–2 hours a month</option><option>A few hours a month</option><option>A few hours a week</option><option>Open to a larger role</option></select>
+        <label for="f-note">Anything else</label>
+        <textarea id="f-note" name="note" placeholder="Current role, what you'd bring, questions"></textarea>
+        <div class="form-foot">
+          <button class="btn btn-ink" type="submit">Send my interest</button>
+          <small>No patient data, please. We reply from the research address and never share your details.</small>
+        </div>
+        <div class="msgbox" id="formMsg" role="status" aria-live="polite"></div>
+      </form>
+    </aside>
+  </div>
+</section>
+
+<!-- ===== CTA ===== -->
+<section class="cta">
+  <div class="wrap">
+    <div>
+      <h2>Hand it your admin. Keep the pen.</h2>
+      <p class="lede" style="margin-top:14px">Install on a server you own, pair your Telegram, connect your accounts, and let it work — with every point of no return waiting for you.</p>
+    </div>
+    <div class="hero-ctas">
+      <a class="btn btn-ink" href="#install">Install in minutes</a>
+      <a class="btn btn-outline" data-config="github" href="https://github.com/" rel="noopener">Star on GitHub</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p class="status"><b>Status:</b> early release. Tested by its developers with automated suites and synthetic batteries; not independently audited. Health features handle logistics, not medical care — in an emergency call your local emergency number. PROCURATOR is built on the open-source OpenClaw gateway, pinned and run with a hardened profile; see the security document in the repository.</p>
+    </div>
+    <div>
+      <b>Project</b>
+      <ul><li><a data-config="github" href="https://github.com/" rel="noopener">Source and releases</a></li><li><a data-config="github" href="https://github.com/" rel="noopener">Security model</a></li><li><a href="#everything">Feature list</a></li></ul>
+    </div>
+    <div>
+      <b>PHI</b>
+      <ul><li><a href="#research">Research</a></li><li><a href="#physicians">Physician recruitment</a></li><li><a data-config="mailto" href="mailto:research@example.org">Contact the research team</a></li></ul>
+      <p style="margin-top:18px;font-size:13px">© 2026 PHI. Open-source software under its repository license.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ---------- site configuration: edit these before publishing ---------- */
+const CONFIG = {
+  github:     "https://github.com/Primaris-Research-Group/procurator",          // repository URL
+  installurl: "https://raw.githubusercontent.com/Primaris-Research-Group/procurator/main/bin/install.sh", // the installer, straight from the repo
+  repourl:    "https://github.com/Primaris-Research-Group/procurator.git",
+  mailto:     "research@example.org",                        // physician recruitment inbox
+  formEndpoint: ""                                           // optional: a Formspree/own endpoint that accepts JSON POST; empty = open an email
+};
+document.querySelectorAll('[data-config]').forEach(el => {
+  const k = el.dataset.config, v = CONFIG[k];
+  if (!v) return;
+  if (el.tagName === 'A') el.href = k === 'mailto' ? 'mailto:' + v : v;
+  else el.textContent = v;
+});
+
+/* ---------- the one orchestrated moment: the hero exchange plays once ---------- */
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const items = [...document.querySelectorAll('#chatBody .msg, #chatBody .receipt')];
+function play(){
+  items.forEach(i => i.classList.remove('show'));
+  if (reduce) { items.forEach(i => i.classList.add('show')); return; }
+  const delays = [300, 1200, 2600, 3400, 4300];
+  items.forEach((el, i) => setTimeout(() => el.classList.add('show'), delays[i] || 600 * i));
+}
+document.getElementById('replay').addEventListener('click', play);
+play();
+
+/* ---------- recruitment form: JSON POST to an endpoint, or a pre-filled email ---------- */
+const form = document.getElementById('recruit'), box = document.getElementById('formMsg');
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(form).entries());
+  data.interests = [...form.querySelectorAll('input[name=interest]:checked')].map(i => i.value);
+  if (!data.name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) {
+    box.className = 'msgbox bad'; box.textContent = 'Add your name and a valid email address.'; return;
+  }
+  if (CONFIG.formEndpoint) {
+    try {
+      const r = await fetch(CONFIG.formEndpoint, {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify(data)});
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      box.className = 'msgbox ok'; box.textContent = 'Received. The research team will reply by email.'; form.reset(); return;
+    } catch (err) {
+      box.className = 'msgbox bad'; box.textContent = 'The form could not be sent (' + err.message + '). Opening an email instead…';
+    }
+  }
+  const body = ['Name: ' + data.name, 'Email: ' + data.email, 'Specialty: ' + (data.specialty||''), 'Stage: ' + data.stage, 'Interests: ' + data.interests.join(', '), 'Availability: ' + data.hours, '', data.note || ''].join('\n');
+  location.href = 'mailto:' + CONFIG.mailto + '?subject=' + encodeURIComponent('Physician research interest — PROCURATOR by PHI') + '&body=' + encodeURIComponent(body);
+  box.className = 'msgbox ok'; box.textContent = 'Your email app should open with the details filled in.';
+});
+</script>
+</body>
+</html>

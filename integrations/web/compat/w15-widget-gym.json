@@ -1,0 +1,70 @@
+{
+ "id": "W15",
+ "name": "w15-widget-gym",
+ "site": "the-internet.herokuapp.com",
+ "lane_default": "cloud",
+ "start_url": "https://the-internet.herokuapp.com/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages) on practice pages: on the-internet.herokuapp.com choose Option 2 at /dropdown; at /dynamic_loading/2 press Start and tell me the text that appears; tell me the editor text at /iframe and the first line at /shadowdom. Then on demoqa.com/date-picker set the date to 12/25/2026 and tell me the field's value.",
+ "hard_part": "Widget gym: dropdown, delayed content, iframe, shadow DOM, date picker",
+ "key_nodes": [
+  {
+   "id": "dropdown",
+   "description": "Option 2 selected at /dropdown",
+   "evidence_any": [
+    "Option 2"
+   ]
+  },
+  {
+   "id": "dynamic",
+   "description": "Hello World! after Start",
+   "evidence_any": [
+    "Hello World!"
+   ]
+  },
+  {
+   "id": "iframe",
+   "description": "Editor text read",
+   "evidence_any": [
+    "Your content goes here."
+   ]
+  },
+  {
+   "id": "shadow",
+   "description": "Shadow DOM text read",
+   "evidence_any": [
+    "different text"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "demoqa date field set",
+  "evidence_any": [
+   "12/25/2026"
+  ]
+ },
+ "answer_check": {
+  "description": "Option 2, Hello World!, Your content goes here., Let's have some different text!, 12/25/2026",
+  "patterns": [
+   "Hello World!",
+   "Your content goes here",
+   "different text",
+   "12/25/2026"
+  ]
+ },
+ "exercises": [
+  "native dropdown",
+  "delayed content",
+  "iframe",
+  "shadow DOM",
+  "date picker"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": false,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

@@ -1,0 +1,33 @@
+{
+ "manifest_version": 2,
+ "id": "library",
+ "version": "0.1.0",
+ "title": "Reference library (his uploads)",
+ "description": "Documents, notes and earlier AI chats the owner chose to upload; searched by the assistant and by packets that reference them. Read-only for the assistant.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {
+  "library_search": {
+   "risk": "read"
+  },
+  "library_read": {
+   "risk": "read"
+  },
+  "library_list": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "library_search",
+   "library_read",
+   "library_list",
+   "library_pinned"
+  ]
+ },
+ "setup": "Dashboard > Library (upload), /library in Telegram."
+}

@@ -1,0 +1,42 @@
+{
+ "id": "C06",
+ "name": "c06-hotel-booking-savannah",
+ "site": "booking.com",
+ "start_url": "https://www.booking.com/",
+ "lanes": "both",
+ "expect": "browse",
+ "suites": [
+  "full"
+ ],
+ "intent": "On booking.com, find the cheapest hotel in Savannah, GA with FREE CANCELLATION for {date+45} to {date+47}, 2 adults, 1 room. Tell me the hotel, the total price and the cancellation deadline.",
+ "hard_part": "Filters (free cancellation), overlays, date picker",
+ "key_nodes": [
+  {
+   "id": "results",
+   "description": "Savannah results for the right dates",
+   "evidence_any": [
+    "Savannah"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Results with prices and cancellation terms",
+  "evidence_any": [
+   "cancel",
+   "Cancel"
+  ]
+ },
+ "answer_check": {
+  "description": "Hotel, $ total, free cancellation",
+  "patterns": [
+   "\\$\\s?\\d",
+   "(?i)cancel"
+  ]
+ },
+ "budget": {
+  "steps": 25,
+  "minutes": 8
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, payment, consent, CAPTCHA or bot check, and every final/commit/protected button"
+}

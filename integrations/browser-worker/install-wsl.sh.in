@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# PROCURATOR home browser for the owner's Windows PC — run INSIDE Ubuntu on WSL2, as your normal Ubuntu user.
+# Generated __DATE__ with browser worker __VERSION__ (source: integrations/browser-worker; regenerate: python3 integrations/browser-worker/bundle.py).
+#   bash install-procurator-browser-wsl.sh            install or update (keeps your site profiles and sign-ins)
+#   bash install-procurator-browser-wsl.sh --remove   stop it and remove the Windows scheduled task (profiles are kept)
+# What it does:
+#   1. installs what it needs inside Ubuntu: Google Chrome, Node.js 22, the Playwright driver library (no extra browsers)
+#   2. makes this PC's browser key (it can only fetch browser jobs from the droplet, as machine "home")
+#   3. installs ~/Procurator/browser (worker, driver, one Chrome profile per site — sign-ins stay on this PC)
+#   4. adds a Windows scheduled task "PROCURATOR browser" that starts it when you sign in to Windows
+#   5. prints the one command to run on your Mac to register this PC
+# Chrome windows appear on your Windows desktop through WSLg (Windows 11): that is where you sign in to a site once.
+set -euo pipefail
+HOST="${PROCURATOR_HOST:?set PROCURATOR_HOST to root@<your box>}"
+NAME="${BROWSER_NAME:-home}"
+LABEL="${BROWSER_LABEL:-Home PC}"
+BASE="$HOME/Procurator/browser"
+KEY="$HOME/.ssh/procurator_browser"
+TASK="PROCURATOR browser"
+grep -qi microsoft /proc/version 2>/dev/null || { echo "Run this inside Ubuntu on WSL (open the Ubuntu app on Windows)."; exit 1; }
+[ "$(id -u)" != 0 ] || { echo "Run as your normal Ubuntu user, not root (no sudo)."; exit 1; }
+DISTRO="${WSL_DISTRO_NAME:-Ubuntu}"
+PS="powershell.exe -NoProfile -ExecutionPolicy Bypass -Command"
+LINUX_PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -v '^/mnt/' | paste -sd: -)
+lin() { PATH="$LINUX_PATH" command -v "$1" 2>/dev/null || true; }
+
+if [ "${1:-}" = "--remove" ]; then
+  $PS "Unregister-ScheduledTask -TaskName '$TASK' -Confirm:\$false -ErrorAction SilentlyContinue" || true
+  pkill -f "$BASE/run-worker.sh" 2>/dev/null || true
+  pkill -f "$BASE/browser_worker.py run" 2>/dev/null || true
+  echo "Home browser stopped and the Windows task removed (profiles kept in $BASE/profiles)."
+  echo "On your Mac: bash bin/setup-builder.sh --uninstall-browser $NAME   (removes this PC's droplet key)"
+  exit 0
+fi
+
+echo "1/5 Installing Chrome, Node.js and the driver library inside Ubuntu (asks for your Ubuntu password)"
+need=()
+[ -n "$(lin python3)" ] || need+=(python3)
+[ -n "$(lin ssh)" ] || need+=(openssh-client)
+[ -n "$(lin curl)" ] || need+=(curl)
+[ -n "$(lin gpg)" ] || need+=(gnupg)
+[ ${#need[@]} -eq 0 ] || { sudo apt-get update -qq && sudo apt-get install -y -qq "${need[@]}"; }
+if [ -z "$(lin google-chrome)" ]; then
+  sudo install -d -m 755 /etc/apt/keyrings
+  curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor --yes -o /etc/apt/keyrings/google-chrome.gpg
+  echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list >/dev/null
+  sudo apt-get update -qq && sudo apt-get install -y -qq google-chrome-stable
+fi
+NODE=$(lin node)
+if [ -z "$NODE" ] || [ "$("$NODE" -p 'process.versions.node.split(".")[0]')" -lt 18 ]; then
+  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - >/dev/null && sudo apt-get install -y -qq nodejs
+  NODE=$(lin node)
+fi
+mkdir -p "$BASE/node" "$BASE/logs" "$BASE/profiles" "$BASE/inbox"; chmod 700 "$HOME/Procurator" "$BASE" "$BASE/profiles" "$BASE/inbox"
+(cd "$BASE/node" && { [ -f package.json ] || "$(lin npm)" init -y >/dev/null; } && "$(lin npm)" install --silent --no-audit --no-fund playwright-core@1 >/dev/null)
+echo "  $(google-chrome --version) · Node $("$NODE" --version) · Playwright driver $("$NODE" -p "require('$BASE/node/node_modules/playwright-core/package.json').version")"
+[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && echo "  Chrome windows will show on your Windows desktop (WSLg)" || echo "  NOTE: no WSLg display here; tasks still run (hidden Chrome), but sign-in windows need Windows 11 WSLg (wsl --update)."
+
+echo "2/5 Browser key for this PC"
+mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
+[ -f "$KEY" ] || ssh-keygen -q -t ed25519 -N '' -C "procurator-browser-$NAME" -f "$KEY"
+chmod 600 "$KEY"
+PUB=$(awk '{print $1" "$2}' "$KEY.pub")
+
+echo "3/5 Installing the worker and driver in $BASE"
+base64 -d > "$BASE/browser_worker.py.new" <<'WORKER_B64'
+__WORKER_B64__
+WORKER_B64
+base64 -d > "$BASE/runner.cjs.new" <<'RUNNER_B64'
+__RUNNER_B64__
+RUNNER_B64
+chmod 700 "$BASE/browser_worker.py.new"; mv "$BASE/browser_worker.py.new" "$BASE/browser_worker.py"; chmod 600 "$BASE/runner.cjs.new"; mv "$BASE/runner.cjs.new" "$BASE/runner.cjs"
+HOSTARG="$HOST" KEYARG="$KEY" LABELARG="$LABEL" CHROME="$(lin google-chrome)" NODEARG="$NODE" python3 - "$BASE/config.json" "$BASE" <<'PY'
+import json,os,sys
+p,base=sys.argv[1],sys.argv[2]
+c=json.load(open(p)) if os.path.exists(p) else {}
+c['relay']=['ssh','-F','/dev/null','-i',os.environ['KEYARG'],'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ConnectTimeout=15',
+            '-o','ServerAliveInterval=15','-o','StrictHostKeyChecking=accept-new',os.environ['HOSTARG']]
+c.update(label=os.environ['LABELARG'],chrome=os.environ['CHROME'],node=os.environ['NODEARG'],runner=os.path.join(base,'runner.cjs'),
+         playwright=os.path.join(base,'node','node_modules','playwright-core'))
+c.setdefault('headed',True);c.setdefault('profiles',{})
+tmp=p+'.tmp';json.dump(c,open(tmp,'w'),indent=2);os.chmod(tmp,0o600);os.replace(tmp,p)
+print('  config: %s (site profiles: %s)'%(p,', '.join(sorted(c['profiles'])) or 'none yet'))
+PY
+# 1.0.2: a small keeper loop restarts the worker 15 s after any exit; flock keeps it to one copy.
+cat > "$BASE/run-worker.sh" <<KEEPER
+#!/bin/bash
+# PROCURATOR home browser keeper: restarts the worker 15 s after any exit. One copy at a time.
+exec 9>"$BASE/run.lock"
+flock -n 9 || exit 0
+while true; do
+  "$(lin python3)" "$BASE/browser_worker.py" run
+  code=\$?
+  echo "\$(date -Is) worker exited (code \$code); restarting in 15 s" >> "$BASE/logs/worker.log"
+  sleep 15
+done
+KEEPER
+chmod 700 "$BASE/run-worker.sh"
+pkill -f "$BASE/run-worker.sh" 2>/dev/null || true
+pkill -f "$BASE/browser_worker.py run" 2>/dev/null && { echo "  stopped the running worker (restarting with the new version)"; sleep 2; } || true
+
+echo "4/5 Windows scheduled task \"$TASK\" (starts the home browser when you sign in to Windows)"
+PY3=$(lin python3)
+ARGS="-d $DISTRO -u $(whoami) --cd $HOME -- bash $BASE/run-worker.sh"
+$PS "
+\$ErrorActionPreference = 'Stop'
+\$inner = 'wsl.exe $ARGS'
+\$a = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -WindowStyle Hidden -Command ' + [char]34 + \$inner + [char]34)
+# 1.0.2: also every 5 minutes; with IgnoreNew this only starts the keeper again if it is not running.
+try { \$r = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2) -RepetitionInterval (New-TimeSpan -Minutes 5) }
+catch { \$r = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 3650) }
+\$t = @((New-ScheduledTaskTrigger -AtLogOn -User \$env:USERNAME), \$r)
+\$s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -MultipleInstances IgnoreNew
+Register-ScheduledTask -TaskName '$TASK' -Action \$a -Trigger \$t -Settings \$s -Description 'PROCURATOR home browser (WSL $DISTRO). Remove: bash install-procurator-browser-wsl.sh --remove' -Force | Out-Null
+Start-ScheduledTask -TaskName '$TASK'
+Write-Output '  task registered and started'
+" | tr -d '\r' || { echo "  Task Scheduler refused. Start it by hand for now:  nohup bash $BASE/run-worker.sh >/dev/null 2>&1 &"; }
+$PS "powercfg /change standby-timeout-ac 0" >/dev/null 2>&1 && echo "  sleep while plugged in: never" || echo "  Set Windows Settings > System > Power > 'When plugged in, put my device to sleep after' to Never."
+sleep 5
+pgrep -f "$BASE/browser_worker.py run" >/dev/null && echo "  home browser worker is running" || echo "  not running yet; it starts at your next Windows sign-in (or run the nohup command above)"
+
+echo "5/5 Register this PC (once). On your Mac, in the procurator-deploy folder, run:"
+echo
+echo "  bash bin/setup-builder.sh --enroll-browser $NAME '$PUB'"
+echo
+echo "Then, for each site you want on the home browser, send in Telegram:  /homesignin leaveco   (a Chrome window opens here;"
+echo "sign in, tick 'remember me' if offered), then  /homeready leaveco .  Check here:  python3 ~/Procurator/browser/browser_worker.py check"

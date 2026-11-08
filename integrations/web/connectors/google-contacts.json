@@ -1,0 +1,28 @@
+{
+ "manifest_version": 2,
+ "id": "google-contacts",
+ "version": "1.0.0",
+ "title": "Google Contacts (search)",
+ "description": "Find a person's email or phone from his contacts; never changes them.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-mail",
+ "auth": {
+  "type": "oauth2",
+  "scopes": [
+   "contacts (gog; used read-only)",
+   "contacts.other.readonly"
+  ]
+ },
+ "tools": {
+  "contacts_search": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "mail": [
+   "contacts_search"
+  ]
+ },
+ "setup": "bin/connect-google.py --start --force-consent --all (or --contacts), then --finish."
+}

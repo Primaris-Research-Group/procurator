@@ -1,0 +1,28 @@
+{
+ "manifest_version": 2,
+ "id": "media",
+ "version": "0.1.0",
+ "title": "Media for posts and attachments",
+ "description": "Files bound into approvals by sha256; swapped files are refused at send.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {
+  "media_list": {
+   "risk": "read"
+  },
+  "media_add_drive": {
+   "risk": "draft",
+   "note": "copies a Drive file into the media store"
+  }
+ },
+ "actions": {
+  "web": [
+   "media_list",
+   "media_ingest"
+  ]
+ }
+}

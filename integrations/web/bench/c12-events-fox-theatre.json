@@ -1,0 +1,42 @@
+{
+ "id": "C12",
+ "name": "c12-events-fox-theatre",
+ "site": "foxtheatre.org",
+ "start_url": "https://www.foxtheatre.org/",
+ "lanes": "both",
+ "expect": "browse",
+ "suites": [
+  "full"
+ ],
+ "intent": "On foxtheatre.org, list the next three upcoming shows at the Fox Theatre in Atlanta with their dates.",
+ "hard_part": "Event listings, carousels, lazy loading",
+ "key_nodes": [
+  {
+   "id": "events",
+   "description": "Upcoming events list",
+   "evidence_any": [
+    "Fox",
+    "events",
+    "Events"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Event names with dates",
+  "evidence_any": [
+   "202"
+  ]
+ },
+ "answer_check": {
+  "description": "Three shows with dates",
+  "patterns": [
+   "(?i)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?\\s+\\d"
+  ]
+ },
+ "budget": {
+  "steps": 12,
+  "minutes": 6
+ },
+ "blocked_is_acceptable": false,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, payment, consent, CAPTCHA or bot check, and every final/commit/protected button"
+}

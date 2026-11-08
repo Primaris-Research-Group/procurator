@@ -1,0 +1,26 @@
+{
+ "manifest_version": 2,
+ "id": "builds",
+ "version": "1.0.1",
+ "title": "Code builds on the owner's computer",
+ "description": "Task packets become draft pull requests on his Mac or PC after /buildapprove.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "token"
+ },
+ "tools": {
+  "build_prepare": {
+   "risk": "draft"
+  },
+  "build_status": {
+   "risk": "read"
+  },
+  "build_cancel": {
+   "risk": "own_write"
+  }
+ },
+ "actions": {},
+ "edition": "x"
+}

@@ -1,0 +1,35 @@
+{
+ "manifest_version": 2,
+ "id": "phone",
+ "version": "1.0.1",
+ "title": "Phone calls (Twilio)",
+ "description": "Outbound calls after /callapprove; listen-in; call reports. phone_press_keys: the phone agent presses menu keys inside a call he already approved (0.29.0: declared so the deny-by-default gate lets it run).",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-voice",
+ "auth": {
+  "type": "token"
+ },
+ "tools": {
+  "phone_prepare_call": {
+   "risk": "draft",
+   "outbound": true,
+   "destination": "to",
+   "audience": "person"
+  },
+  "phone_review_call": {
+   "risk": "owner"
+  },
+  "phone_call_status": {
+   "risk": "read"
+  },
+  "phone_read_call": {
+   "risk": "read"
+  },
+  "phone_press_keys": {
+   "risk": "own_write"
+  }
+ },
+ "actions": {},
+ "setup": "bin/connect-twilio.py, bin/activate-voice.sh."
+}

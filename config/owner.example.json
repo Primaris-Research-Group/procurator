@@ -1,0 +1,13 @@
+{
+  "schema": 2,
+  "name": "Alex Example",
+  "short_name": "Alex",
+  "pronoun": "they",
+  "timezone": "America/New_York",
+  "language": "en",
+  "email": "owner@example.com",
+  "work_email": "",
+  "channels": [
+    {"type": "telegram", "id": "100000001", "primary": true}
+  ]
+}

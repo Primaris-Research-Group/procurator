@@ -1,0 +1,13 @@
+PROCURATOR
+Copyright 2026 Primaris Health Institute
+
+This product includes software developed at Primaris Health Institute (https://github.com/Primaris-Research-Group/procurator).
+
+Third-party components:
+
+* OpenClaw gateway — MIT License. PROCURATOR runs as plugins on the OpenClaw gateway and ships the upstream
+  Docker Compose file, pinned to one image version (licenses/OpenClaw-MIT.txt, licenses/openclaw-compose-provenance.json).
+* playwright-core (Microsoft) — Apache License 2.0. Installed at setup time for the browser driver; not bundled.
+* Browserbase CLI — installed at setup time by the owner when the cloud browser lane is enabled; not bundled.
+
+Runtime dependencies of PROCURATOR's own code: the Python standard library and Node.js, nothing else.

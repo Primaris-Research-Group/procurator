@@ -1,0 +1,33 @@
+{
+ "id": "C01",
+ "name": "c01-flight-cheapest-window",
+ "site": "(fare tools)",
+ "start_url": null,
+ "lanes": "none",
+ "expect": "answer_only",
+ "suites": [
+  "quick",
+  "full"
+ ],
+ "intent": "Find the cheapest time in the next 12 months for a round trip from Atlanta (ATL) to Lima (LIM), staying 7 to 14 days. Say whether any nonstop exists; if none, say so and give the cheapest one-stop option. Give the month, example dates and the price.",
+ "hard_part": "Picking the right tool (fare calendar) instead of dozens of browser searches; honest \"no nonstop\" answer",
+ "key_nodes": [],
+ "final_state": {
+  "description": "not used (answer only)",
+  "evidence_any": []
+ },
+ "answer_check": {
+  "description": "A month, a $ price, and a clear nonstop yes/no",
+  "patterns": [
+   "\\$\\s?\\d",
+   "(?i)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)",
+   "(?i)non-?stop|direct"
+  ]
+ },
+ "budget": {
+  "steps": 10,
+  "minutes": 5
+ },
+ "blocked_is_acceptable": false,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, payment, consent, CAPTCHA or bot check, and every final/commit/protected button"
+}

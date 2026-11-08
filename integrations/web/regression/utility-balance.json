@@ -1,0 +1,25 @@
+{
+ "name": "utility-balance",
+ "site": "georgiapower.com",
+ "start_url": "https://www.georgiapower.com/",
+ "intent": "Read the current balance and due date (signed in; read only).",
+ "key_nodes": [
+  {
+   "id": "account",
+   "description": "Account summary",
+   "evidence_any": [
+    "Amount due",
+    "Due"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Balance and due date read back",
+  "evidence_any": [
+   "$",
+   "Due"
+  ]
+ },
+ "fixtures": [],
+ "live_stops_before": "any final submit, payment, sign-in or consent (gates stay on)"
+}

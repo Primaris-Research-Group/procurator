@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSHealthShareUsageDescription</key>
+	<string>PROCURATOR Health sends the measurements you choose (weight, height, daily steps, active energy) to your own PROCURATOR server so your assistant can track them. Nothing is sent until you tap Sync.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>PROCURATOR Health does not write to Health in this version.</string>
+</dict>
+</plist>

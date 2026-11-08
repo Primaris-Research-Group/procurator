@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+TASK_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$TASK_ROOT"
+action="${1:-help}"
+if [[ $# -gt 0 ]]; then shift; fi
+case "$action" in
+  init) exec python3 bin/initialize.py ;;
+  validate) exec docker compose config --quiet ;;
+  pull) exec docker compose pull ;;
+  onboard)
+    docker compose run --rm --no-deps --entrypoint node openclaw-gateway \
+      dist/index.js onboard --mode local --no-install-daemon
+    exec docker compose run --rm --no-deps --entrypoint node openclaw-gateway \
+      dist/index.js config set --batch-json \
+      '[{"path":"gateway.mode","value":"local"},{"path":"gateway.bind","value":"lan"},{"path":"gateway.controlUi.allowedOrigins","value":["http://localhost:18789","http://127.0.0.1:18789"]}]'
+    ;;
+  start) exec docker compose up -d --no-build openclaw-gateway ;;
+  stop) exec docker compose stop openclaw-gateway ;;
+  status) exec docker compose ps ;;
+  cli)
+    if [[ -t 0 && -t 1 ]]; then
+      exec docker compose exec openclaw-gateway node dist/index.js "$@"
+    else
+      exec docker compose exec -T openclaw-gateway node dist/index.js "$@"
+    fi
+    ;;
+  *)
+    cat <<'HELP'
+Usage: ./bin/assistant init|validate|pull|onboard|start|stop|status
+       ./bin/assistant cli <OpenClaw arguments>
+Run init, validate, pull, onboard, start, then status on the new server.
+This kit does not create a server, connect accounts, or place calls.
+HELP
+    ;;
+esac

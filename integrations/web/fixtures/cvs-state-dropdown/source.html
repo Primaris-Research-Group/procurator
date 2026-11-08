@@ -1,0 +1,18 @@
+<!doctype html><html><head><title>Patient details | CVS Health</title>
+<style>.ps-select{position:relative;display:inline-block;width:240px}.ps-select select{position:absolute;inset:0;opacity:0;pointer-events:none}.ps-select button{width:240px;text-align:left}</style></head>
+<body><main><h1>Tell us about the patient</h1>
+<form action="/scheduling/patient-details/save" method="post">
+<fieldset><legend>Patient information</legend>
+<label for="first">First name</label><input id="first" name="firstName" autocomplete="given-name" required>
+<label for="last">Last name</label><input id="last" name="lastName" autocomplete="family-name" required>
+<label for="dob">Date of birth</label><input id="dob" name="dob" placeholder="MM/DD/YYYY" required>
+</fieldset>
+<fieldset><legend>Address</legend>
+<label for="street">Street address</label><input id="street" name="street">
+<label for="city">City</label><input id="city" name="city">
+<label for="state">State</label>
+<div class="ps-select"><select id="state" name="state" aria-hidden="true" tabindex="-1"><option value="">Select</option><option value="AL">Alabama</option><option value="FL">Florida</option><option value="GA">Georgia</option><option value="SC">South Carolina</option><option value="TN">Tennessee</option></select><button type="button" aria-haspopup="listbox">Select</button></div>
+<label for="zip">ZIP code</label><input id="zip" name="zip" inputmode="numeric" maxlength="5">
+</fieldset>
+<button type="submit">Continue</button>
+</form></main></body></html>

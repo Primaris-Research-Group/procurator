@@ -1,0 +1,61 @@
+{
+  "name": "openclaw-plugin-procurator-web",
+  "version": "0.30.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "activity.mjs",
+    "brief.mjs",
+    "builds.mjs",
+    "calculators.mjs",
+    "capabilities.mjs",
+    "dashboard.mjs",
+    "directrun.mjs",
+    "docread.mjs",
+    "evidence.mjs",
+    "health.mjs",
+    "index.mjs",
+    "missions.mjs",
+    "models.mjs",
+    "news.mjs",
+    "openclaw.plugin.json",
+    "package.json",
+    "preferences.mjs",
+    "profile.mjs",
+    "welcome.mjs",
+    "project-sources.mjs",
+    "recall.mjs",
+    "register.mjs",
+    "runner.cjs",
+    "sites.mjs",
+    "support.mjs",
+    "taskbind.mjs",
+    "tasks.mjs",
+    "usage.mjs",
+    "webbench.mjs",
+    "webextras.mjs",
+    "workflow.mjs",
+    "connector-gate.mjs",
+    "connector-policy.json",
+    "connectors.mjs",
+    "urgent.mjs",
+    "lookups.mjs",
+    "coach.mjs",
+    "social.mjs",
+    "owner-config.mjs",
+    "home.mjs",
+    "library.mjs",
+    "accounts.mjs"
+  ],
+  "openclaw": {
+    "extensions": [
+      "./index.mjs"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.10.9"
+    },
+    "build": {
+      "openclawVersion": "2026.10.9"
+    }
+  }
+}

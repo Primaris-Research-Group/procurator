@@ -1,0 +1,42 @@
+{
+ "id": "C03",
+ "name": "c03-flight-expedia-oneway",
+ "site": "expedia.com",
+ "start_url": "https://www.expedia.com/Flights",
+ "lanes": "both",
+ "expect": "browse",
+ "suites": [
+  "full"
+ ],
+ "intent": "On expedia.com, find the cheapest NONSTOP one-way flight from Atlanta (ATL) to New York LaGuardia (LGA) on {date+21}, 1 adult. Tell me the price, airline and departure time.",
+ "hard_part": "Expedia bot defences and rate limits; nonstop filter",
+ "key_nodes": [
+  {
+   "id": "results",
+   "description": "ATL to LGA results for the date",
+   "evidence_any": [
+    "LGA",
+    "LaGuardia",
+    "New York"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Results with prices",
+  "evidence_any": [
+   "$"
+  ]
+ },
+ "answer_check": {
+  "description": "Price, airline, time (or a clear \"the site blocked me\")",
+  "patterns": [
+   "(?i)\\$\\s?\\d|block|too many|robot"
+  ]
+ },
+ "budget": {
+  "steps": 20,
+  "minutes": 8
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, payment, consent, CAPTCHA or bot check, and every final/commit/protected button"
+}

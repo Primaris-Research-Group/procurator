@@ -1,0 +1,24 @@
+{
+  "id": "procurator-voice",
+  "name": "PROCURATOR Phone Assignments",
+  "description": "Exact outgoing call approval, session-bound briefs and isolated message taking.",
+  "version": "0.8.3",
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": [
+      "phone_line_info",
+      "phone_prepare_call",
+      "phone_review_call",
+      "phone_call_status",
+      "phone_read_call",
+      "phone_press_keys"
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  }
+}

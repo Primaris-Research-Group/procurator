@@ -1,0 +1,50 @@
+{
+ "manifest_version": 2,
+ "id": "home",
+ "version": "0.1.0",
+ "title": "Home devices (policy; bridge after release)",
+ "description": "Lights and thermostat inside your standing grants; locks, garage, alarm and cameras only with your live approval; smoke, CO and leak devices never disabled. /homeoff stops everything.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {
+  "home_devices": {
+   "risk": "read"
+  },
+  "home_status": {
+   "risk": "read"
+  },
+  "home_command": {
+   "risk": "own_write",
+   "effect": "physical",
+   "safety_tier": "access",
+   "confirm": "readback",
+   "bounds": {
+    "setpoint": {
+     "min": 16,
+     "max": 28
+    },
+    "brightness": {
+     "min": 0,
+     "max": 100
+    }
+   },
+   "note": "tier is decided per device kind; access and safety always ask; refused from packets, schedules and events"
+  },
+  "home_snapshot": {
+   "risk": "read",
+   "note": "camera image into the media store, labeled camera"
+  }
+ },
+ "actions": {
+  "web": [
+   "home_devices",
+   "home_status",
+   "home_command",
+   "home_snapshot"
+  ]
+ }
+}

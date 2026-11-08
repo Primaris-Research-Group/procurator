@@ -1,0 +1,44 @@
+{
+ "name": "cvs-flu-search",
+ "site": "cvs.com",
+ "start_url": "https://www.cvs.com/immunizations/flu",
+ "intent": "Find a free flu-shot slot at CVS Macon Rd (Columbus GA) on an allowed date; stop before Confirm.",
+ "key_nodes": [
+  {
+   "id": "store_list",
+   "description": "Store list for ZIP 31901 is shown",
+   "evidence_any": [
+    "near 31901",
+    "Macon Rd"
+   ]
+  },
+  {
+   "id": "slot_page",
+   "description": "Time-slot page for the right date",
+   "evidence_any": [
+    "2:30 PM",
+    "AM",
+    "PM"
+   ]
+  },
+  {
+   "id": "patient_details",
+   "description": "Patient details form with the State dropdown",
+   "evidence_any": [
+    "State",
+    "Date of birth"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Review page with Confirm appointment, not pressed",
+  "evidence_any": [
+   "Review",
+   "Confirm appointment"
+  ]
+ },
+ "fixtures": [
+  "cvs-state-dropdown"
+ ],
+ "live_stops_before": "any final submit, payment, sign-in or consent (gates stay on)"
+}

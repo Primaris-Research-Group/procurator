@@ -1,0 +1,22 @@
+[Unit]
+Description=the owner private email drafts and approval broker
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/procurator/integrations/mail/broker.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+RuntimeDirectory=procurator-mail
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
+StateDirectory=procurator-mail
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/procurator-mail /run/procurator-mail /opt/procurator/google
+[Install]
+WantedBy=multi-user.target

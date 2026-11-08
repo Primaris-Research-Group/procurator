@@ -1,0 +1,23 @@
+{
+ "manifest_version": 2,
+ "id": "npi-registry",
+ "version": "1.0.0",
+ "title": "Clinician lookup (CMS NPI Registry)",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "none"
+ },
+ "tools": {
+  "npi_lookup": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "npi_lookup"
+  ]
+ },
+ "setup": "None: public registry."
+}

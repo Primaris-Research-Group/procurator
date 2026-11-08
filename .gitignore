@@ -1,0 +1,27 @@
+# private state and secrets (never committed)
+.env
+*.env
+!*.example.env
+state/
+auth-profiles/
+backups/
+secrets/
+google/
+vendor/
+config/owner.json
+config/procurator.toml
+*.sqlite3
+*.sqlite3-journal
+*.key
+*.pem
+
+# build and OS artefacts
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
+integrations/web/bench/results/
+integrations/web/compat/results/
+
+# release tooling that must stay local
+release/denylist.local.txt

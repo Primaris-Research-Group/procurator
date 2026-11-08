@@ -1,0 +1,26 @@
+{
+ "manifest_version": 2,
+ "id": "platform-stream",
+ "version": "0.1.0",
+ "title": "Activity stream, devices and Live",
+ "description": "Content-free activity lines from every broker, the device registry and Live frame status.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {
+  "devices_list": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "stream_emit",
+   "stream_recent",
+   "devices_list",
+   "live_status"
+  ]
+ }
+}

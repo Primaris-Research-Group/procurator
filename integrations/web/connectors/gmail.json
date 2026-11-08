@@ -1,0 +1,65 @@
+{
+ "manifest_version": 2,
+ "id": "gmail",
+ "version": "1.0.0",
+ "title": "Gmail and assistant mail",
+ "description": "Read and search; private drafts with attachments bound by sha256; owner copy per audience (/mailautocc); sending only after /mailsend.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-mail",
+ "auth": {
+  "type": "oauth2",
+  "scopes": [
+   "gmail.readonly",
+   "gmail.send",
+   "gmail.modify"
+  ]
+ },
+ "tools": {
+  "mail_accounts": {
+   "risk": "read"
+  },
+  "mail_assistant_inbox": {
+   "risk": "read"
+  },
+  "mail_create_draft": {
+   "risk": "draft",
+   "outbound": true,
+   "destination": "to",
+   "audience": "person",
+   "account": "account",
+   "media": "attachments"
+  },
+  "mail_get_draft": {
+   "risk": "read"
+  },
+  "mail_cancel_draft": {
+   "risk": "own_write"
+  },
+  "mail_request_review": {
+   "risk": "owner",
+   "note": "sends the exact draft to the owner for /mailsend"
+  },
+  "mail_manage": {
+   "risk": "own_write"
+  },
+  "mail_request_trash": {
+   "risk": "owner"
+  }
+ },
+ "actions": {
+  "mail": [
+   "assistant_inbox",
+   "auto_cc_status",
+   "cancel",
+   "create",
+   "get",
+   "manage",
+   "review",
+   "status",
+   "trash_request",
+   "watch_search"
+  ]
+ },
+ "setup": "bin/connect-google.py --start --force-consent --all, then --finish."
+}

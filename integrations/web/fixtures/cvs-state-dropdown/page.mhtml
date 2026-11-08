@@ -1,0 +1,63 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: https://www.cvs.com/scheduling/patient-details
+Subject: Patient details | CVS Health
+Date: Fri, 06 Nov 2026 21:02:47 GMT
+MIME-Version: 1.0
+Content-Type: multipart/related;
+	type="text/html";
+	boundary="----MultipartBoundary--HXhWnsJQcWG3o3y0vIkGJxOend79XebwvZJjIP5m7F----"
+
+
+------MultipartBoundary--HXhWnsJQcWG3o3y0vIkGJxOend79XebwvZJjIP5m7F----
+Content-Type: text/html
+Content-ID: <frame-DB4D4072B822C8A5EA056D4D15643C2C@mhtml.blink>
+Content-Transfer-Encoding: quoted-printable
+Content-Location: https://www.cvs.com/scheduling/patient-details
+
+<!DOCTYPE html><html><head><meta http-equiv=3D"Content-Type" content=3D"tex=
+t/html; charset=3Dwindows-1252"><link rel=3D"stylesheet" type=3D"text/css" =
+href=3D"cid:css-fdd1751d-6f73-4c3a-95fa-a29568f35c0b@mhtml.blink" /><title>=
+Patient details | CVS Health</title>
+</head>
+<body><main><h1>Tell us about the patient</h1>
+<form action=3D"https://www.cvs.com/scheduling/patient-details/save" method=
+=3D"post">
+<fieldset><legend>Patient information</legend>
+<label for=3D"first">First name</label><input id=3D"first" name=3D"firstNam=
+e" autocomplete=3D"given-name" required=3D"">
+<label for=3D"last">Last name</label><input id=3D"last" name=3D"lastName" a=
+utocomplete=3D"family-name" required=3D"">
+<label for=3D"dob">Date of birth</label><input id=3D"dob" name=3D"dob" plac=
+eholder=3D"MM/DD/YYYY" required=3D"">
+</fieldset>
+<fieldset><legend>Address</legend>
+<label for=3D"street">Street address</label><input id=3D"street" name=3D"st=
+reet">
+<label for=3D"city">City</label><input id=3D"city" name=3D"city">
+<label for=3D"state">State</label>
+<div class=3D"ps-select"><select id=3D"state" name=3D"state" aria-hidden=3D=
+"true" tabindex=3D"-1"><option value=3D"">Select</option><option value=3D"A=
+L">Alabama</option><option value=3D"FL">Florida</option><option value=3D"GA=
+">Georgia</option><option value=3D"SC">South Carolina</option><option value=
+=3D"TN">Tennessee</option></select><button type=3D"button" aria-haspopup=3D=
+"listbox">Select</button></div>
+<label for=3D"zip">ZIP code</label><input id=3D"zip" name=3D"zip" inputmode=
+=3D"numeric" maxlength=3D"5">
+</fieldset>
+<button type=3D"submit">Continue</button>
+</form></main>
+</body></html>
+------MultipartBoundary--HXhWnsJQcWG3o3y0vIkGJxOend79XebwvZJjIP5m7F----
+Content-Type: text/css
+Content-Transfer-Encoding: quoted-printable
+Content-Location: cid:css-fdd1751d-6f73-4c3a-95fa-a29568f35c0b@mhtml.blink
+
+@charset "windows-1252";
+
+.ps-select { position: relative; display: inline-block; width: 240px; }
+
+.ps-select select { position: absolute; inset: 0px; opacity: 0; pointer-eve=
+nts: none; }
+
+.ps-select button { width: 240px; text-align: left; }
+------MultipartBoundary--HXhWnsJQcWG3o3y0vIkGJxOend79XebwvZJjIP5m7F------

@@ -1,0 +1,83 @@
+{
+ "manifest_version": 2,
+ "id": "health-core",
+ "version": "1.0.0",
+ "title": "Health: grants, effects and receipts",
+ "description": "Owner-approved health grants, recorded effects, private receipts.",
+ "class": "health",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {
+  "health_status": {
+   "risk": "read"
+  },
+  "health_grant_propose": {
+   "risk": "draft"
+  },
+  "health_effect_begin": {
+   "risk": "draft"
+  },
+  "health_effect_dispatch": {
+   "risk": "external",
+   "audience": "person"
+  },
+  "health_effect_settle": {
+   "risk": "own_write"
+  },
+  "health_effect_reconcile": {
+   "risk": "read"
+  },
+  "health_effect_get": {
+   "risk": "read"
+  },
+  "health_receipt": {
+   "risk": "owner"
+  },
+  "health_bookings": {
+   "risk": "read"
+  },
+  "health_calendar_plan": {
+   "risk": "draft"
+  },
+  "health_calendar_record": {
+   "risk": "own_write"
+  },
+  "health_call_brief": {
+   "risk": "draft"
+  },
+  "health_digest": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "health_bookings",
+   "health_calendar_plan",
+   "health_calendar_record",
+   "health_call_brief",
+   "health_connection_status",
+   "health_digest",
+   "health_effect_begin",
+   "health_effect_dispatch",
+   "health_effect_get",
+   "health_effect_reconcile",
+   "health_effect_settle",
+   "health_grant_propose",
+   "health_receipt",
+   "health_status",
+   "health_sync_revoke"
+  ]
+ },
+ "min_data": [
+  "appointments",
+  "prescriptions",
+  "providers"
+ ],
+ "fixtures": [
+  "integrations/web/test_health.py",
+  "integrations/web/mock_ehr.py"
+ ]
+}

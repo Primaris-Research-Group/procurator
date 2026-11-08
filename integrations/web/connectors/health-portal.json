@@ -1,0 +1,61 @@
+{
+ "manifest_version": 2,
+ "id": "health-portal",
+ "version": "1.0.0",
+ "title": "Health: patient portal (SMART on FHIR)",
+ "description": "One institution at a time; reads under a grant, bookings through effects.",
+ "class": "health",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "oauth2",
+  "scopes": [
+   "patient/*.read (per institution)",
+   "launch/patient",
+   "offline_access"
+  ]
+ },
+ "tools": {
+  "health_portal_status": {
+   "risk": "read"
+  },
+  "health_portal_read": {
+   "risk": "read"
+  },
+  "health_portal_book": {
+   "risk": "external",
+   "audience": "person"
+  },
+  "health_portal_cancel": {
+   "risk": "external",
+   "audience": "person"
+  },
+  "health_portal_reschedule": {
+   "risk": "external",
+   "audience": "person"
+  },
+  "health_portal_reconcile": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "health_portal_book",
+   "health_portal_cancel",
+   "health_portal_read",
+   "health_portal_reconcile",
+   "health_portal_reschedule",
+   "health_portal_status"
+  ]
+ },
+ "setup": "/healthconnect then /healthauth.",
+ "min_data": [
+  "appointments",
+  "providers",
+  "demographics"
+ ],
+ "fixtures": [
+  "integrations/web/mock_ehr.py",
+  "integrations/web/test_health_portal.py"
+ ]
+}

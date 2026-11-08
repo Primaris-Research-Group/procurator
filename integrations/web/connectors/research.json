@@ -1,0 +1,47 @@
+{
+ "manifest_version": 2,
+ "id": "research",
+ "version": "1.0.0",
+ "title": "Research and public data",
+ "description": "News, video search, medical evidence, market quotes, flights and travel links; queries go to public services.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "api_key"
+ },
+ "tools": {
+  "news_headlines": {
+   "risk": "read"
+  },
+  "youtube_search": {
+   "risk": "read"
+  },
+  "evidence_search": {
+   "risk": "read"
+  },
+  "market_quotes": {
+   "risk": "read"
+  },
+  "flight_fares": {
+   "risk": "read"
+  },
+  "flight_search": {
+   "risk": "read"
+  },
+  "travel_search_links": {
+   "risk": "read"
+  },
+  "clinical_calc": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "flight_fares",
+   "flights",
+   "travel_links"
+  ]
+ },
+ "setup": "Optional keys: bin/set-web-key.sh travelpayouts | duffel."
+}

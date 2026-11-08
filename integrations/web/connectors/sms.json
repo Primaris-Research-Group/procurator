@@ -1,0 +1,42 @@
+{
+ "manifest_version": 2,
+ "id": "sms",
+ "version": "1.0.0",
+ "title": "Text messages (Twilio)",
+ "description": "Text drafts reviewed in Telegram; sent only with /smssend. Off until the number is registered for business texting.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-mail",
+ "auth": {
+  "type": "token",
+  "scopes": [
+   "Twilio Messages (the phone module's account)"
+  ]
+ },
+ "tools": {
+  "sms_draft": {
+   "risk": "draft",
+   "outbound": true,
+   "destination": "to",
+   "audience": "person"
+  },
+  "sms_review": {
+   "risk": "owner"
+  },
+  "sms_status": {
+   "risk": "read"
+  },
+  "sms_cancel": {
+   "risk": "own_write"
+  }
+ },
+ "actions": {
+  "mail": [
+   "sms_cancel",
+   "sms_draft",
+   "sms_get",
+   "sms_review"
+  ]
+ },
+ "setup": "Register the number (A2P 10DLC or toll-free verification) in Twilio, then on the server: python3 bin/connect-sms.py --on"
+}

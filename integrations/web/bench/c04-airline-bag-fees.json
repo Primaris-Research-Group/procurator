@@ -1,0 +1,41 @@
+{
+ "id": "C04",
+ "name": "c04-airline-bag-fees",
+ "site": "delta.com",
+ "start_url": "https://www.delta.com/",
+ "lanes": "both",
+ "expect": "browse",
+ "suites": [
+  "full"
+ ],
+ "intent": "On delta.com (read only), find what Delta charges for the first and second checked bag on a flight within the United States, in Main Cabin. Give both amounts and the page you read it on.",
+ "hard_part": "Information architecture on a read-only airline site; no typing allowed",
+ "key_nodes": [
+  {
+   "id": "bags",
+   "description": "Delta baggage fee page",
+   "evidence_any": [
+    "bag",
+    "Bag"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Fee amounts visible",
+  "evidence_any": [
+   "$"
+  ]
+ },
+ "answer_check": {
+  "description": "Two $ amounts",
+  "patterns": [
+   "\\$\\s?\\d+[\\s\\S]*\\$\\s?\\d+"
+  ]
+ },
+ "budget": {
+  "steps": 15,
+  "minutes": 6
+ },
+ "blocked_is_acceptable": false,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, payment, consent, CAPTCHA or bot check, and every final/commit/protected button"
+}

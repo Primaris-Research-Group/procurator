@@ -1,0 +1,46 @@
+{
+ "id": "W08",
+ "name": "w08-target-brita",
+ "site": "target.com",
+ "lane_default": "home",
+ "start_url": "https://www.target.com/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages): on target.com, find the price of a Brita standard filter 3-pack and whether the Columbus, GA store has it in stock.",
+ "hard_part": "Store picker dialog, lazy-loaded results",
+ "key_nodes": [
+  {
+   "id": "product",
+   "description": "A Brita standard filter 3-pack product page",
+   "evidence_any": [
+    "Brita",
+    "3"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Price and Columbus store stock",
+  "evidence_any": [
+   "$",
+   "Columbus"
+  ]
+ },
+ "answer_check": {
+  "description": "A $ price and the store's stock wording",
+  "patterns": [
+   "\\$\\d+\\.\\d{2}",
+   "(?i)in stock|out of stock|limited stock|pickup"
+  ]
+ },
+ "exercises": [
+  "store picker dialog",
+  "lazy loading"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

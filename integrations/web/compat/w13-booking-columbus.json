@@ -1,0 +1,46 @@
+{
+ "id": "W13",
+ "name": "w13-booking-columbus",
+ "site": "booking.com",
+ "lane_default": "cloud",
+ "start_url": "https://www.booking.com/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages): on booking.com, find hotels in Columbus, GA for next Friday to Sunday, 2 adults, 1 room, and tell me the cheapest total on the first results page.",
+ "hard_part": "Date-range picker, sign-in nag overlays",
+ "key_nodes": [
+  {
+   "id": "results",
+   "description": "Columbus, GA hotel results for the right dates",
+   "evidence_any": [
+    "Columbus",
+    "2 adults"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "First results page with totals",
+  "evidence_any": [
+   "$"
+  ]
+ },
+ "answer_check": {
+  "description": "A hotel name, a $ total and the right dates",
+  "patterns": [
+   "\\$\\s?\\d+",
+   "(?i)columbus"
+  ]
+ },
+ "exercises": [
+  "date-range picker",
+  "overlays",
+  "bot protection"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

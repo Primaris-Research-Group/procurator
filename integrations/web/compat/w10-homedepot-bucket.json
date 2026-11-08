@@ -1,0 +1,45 @@
+{
+ "id": "W10",
+ "name": "w10-homedepot-bucket",
+ "site": "homedepot.com",
+ "lane_default": "cloud",
+ "start_url": "https://www.homedepot.com/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages): on homedepot.com, find the price of a Homer 5-gallon bucket and its aisle and bay at the store nearest 31901.",
+ "hard_part": "Store selection, aisle data",
+ "key_nodes": [
+  {
+   "id": "product",
+   "description": "A Homer 5-gallon bucket product page",
+   "evidence_any": [
+    "Homer",
+    "5 Gal"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Price with aisle and bay at the local store",
+  "evidence_any": [
+   "Aisle",
+   "Bay"
+  ]
+ },
+ "answer_check": {
+  "description": "A $ price and Aisle ... Bay ...",
+  "patterns": [
+   "\\$\\d+\\.\\d{2}",
+   "(?i)aisle\\s*\\d+.*bay\\s*\\d+"
+  ]
+ },
+ "exercises": [
+  "store selection"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

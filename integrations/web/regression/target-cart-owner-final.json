@@ -1,0 +1,32 @@
+{
+ "name": "target-cart-owner-final",
+ "site": "target.com",
+ "start_url": "https://www.target.com/",
+ "intent": "Add one known item to the cart and reach checkout; Target is owner_final (he presses Place order).",
+ "key_nodes": [
+  {
+   "id": "item",
+   "description": "Item page",
+   "evidence_any": [
+    "Add to cart"
+   ]
+  },
+  {
+   "id": "cart",
+   "description": "Cart shows the item",
+   "evidence_any": [
+    "Cart",
+    "Subtotal"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Checkout reached; takeover link sent",
+  "evidence_any": [
+   "Place your order",
+   "Checkout"
+  ]
+ },
+ "fixtures": [],
+ "live_stops_before": "any final submit, payment, sign-in or consent (gates stay on)"
+}

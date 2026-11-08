@@ -1,0 +1,47 @@
+{
+ "id": "W12",
+ "name": "w12-google-flights",
+ "site": "google.com",
+ "lane_default": "cloud",
+ "start_url": "https://www.google.com/travel/flights",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages), using the browser rather than the flight-search tool: on Google Flights, find the cheapest nonstop round trip ATL to MCO leaving next Friday and returning Sunday.",
+ "hard_part": "Airport comboboxes, date picker, dynamic results",
+ "key_nodes": [
+  {
+   "id": "search",
+   "description": "ATL to MCO search with dates",
+   "evidence_any": [
+    "ATL",
+    "MCO"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Results filtered to nonstop with prices",
+  "evidence_any": [
+   "Nonstop",
+   "$"
+  ]
+ },
+ "answer_check": {
+  "description": "Airline, departure times and a $ price, nonstop",
+  "patterns": [
+   "\\$\\d+",
+   "(?i)nonstop"
+  ]
+ },
+ "exercises": [
+  "comboboxes",
+  "date picker",
+  "dynamic results"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": false,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

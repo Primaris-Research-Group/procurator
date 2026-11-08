@@ -1,0 +1,33 @@
+{
+ "name": "hotels-search-to-cart",
+ "site": "hotels.com",
+ "start_url": "https://www.hotels.com/",
+ "intent": "Search Atlanta, 2 nights, 1 room; open the cheapest refundable option; stop before payment.",
+ "key_nodes": [
+  {
+   "id": "results",
+   "description": "Search results",
+   "evidence_any": [
+    "Atlanta",
+    "nights"
+   ]
+  },
+  {
+   "id": "room",
+   "description": "Room selection",
+   "evidence_any": [
+    "Refundable",
+    "Free cancellation"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Checkout page shown with total, nothing paid",
+  "evidence_any": [
+   "Total",
+   "Pay"
+  ]
+ },
+ "fixtures": [],
+ "live_stops_before": "any final submit, payment, sign-in or consent (gates stay on)"
+}

@@ -1,0 +1,38 @@
+{
+ "manifest_version": 2,
+ "id": "activity-log",
+ "version": "1.0.0",
+ "title": "Activity log",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {
+  "activity_get": {
+   "risk": "read"
+  },
+  "activity_report": {
+   "risk": "read"
+  },
+  "activity_search": {
+   "risk": "read"
+  },
+  "activity_upcoming": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "activity_get",
+   "activity_report",
+   "activity_search",
+   "activity_upcoming",
+   "activity_upcoming_push"
+  ],
+  "mail": [
+   "pending"
+  ]
+ }
+}

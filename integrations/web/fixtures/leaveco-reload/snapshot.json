@@ -1,0 +1,67 @@
+{
+ "url": "https://services.leaveco.example/absence/report/review",
+ "title": "Report an absence | MyLeaveco",
+ "scroll": {
+  "y": 0,
+  "viewport": 720,
+  "page": 720,
+  "more_below": false
+ },
+ "new_refs": [],
+ "text": "Review your absence\nThis absence overlaps an absence already reported for 11/03/2026. If you submit, the earlier entry will be replaced.\n\nAbsence date: 11/03/2026 Â· Hours missed: 4 Â· Reason: Medical appointment\n\nGo Back Submit",
+ "controls": [
+  {
+   "ref": "e1",
+   "stable_id": 1,
+   "tag": "button",
+   "type": "button",
+   "role": "",
+   "name": "",
+   "id": "",
+   "label": "Go Back",
+   "href": "",
+   "form_action": "https://services.leaveco.example/absence/report/submit",
+   "disabled": false,
+   "checked": false,
+   "pressed": null,
+   "selected": false,
+   "value": "",
+   "value_truncated": false,
+   "options": []
+  },
+  {
+   "ref": "e2",
+   "stable_id": 2,
+   "tag": "button",
+   "type": "submit",
+   "role": "",
+   "name": "",
+   "id": "",
+   "label": "Submit",
+   "described": "Submitting will replace the absence already reported.",
+   "href": "",
+   "form_action": "https://services.leaveco.example/absence/report/submit",
+   "disabled": false,
+   "checked": false,
+   "pressed": null,
+   "selected": false,
+   "value": "",
+   "value_truncated": false,
+   "options": []
+  }
+ ],
+ "form_gaps": [],
+ "controls_truncated": false,
+ "navigation_truncated": false,
+ "total_control_count": 2,
+ "frame_count": 0,
+ "embedded_frames": [],
+ "open_shadow_root_count": 0,
+ "page_errors": [],
+ "page_notices": [
+  "This absence overlaps an absence already reported for 11/03/2026. If you submit, the earlier entry will be replaced."
+ ],
+ "readiness": {
+  "state": "ready"
+ }
+}

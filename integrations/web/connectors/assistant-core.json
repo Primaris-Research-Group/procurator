@@ -1,0 +1,60 @@
+{
+ "manifest_version": 2,
+ "id": "assistant-core",
+ "version": "1.0.1",
+ "title": "Assistant core (profile, preferences, manual, reminders, brief)",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {
+  "assistant_capabilities": {
+   "risk": "read"
+  },
+  "procurator_manual": {
+   "risk": "read"
+  },
+  "owner_profile": {
+   "risk": "read"
+  },
+  "owner_preferences": {
+   "risk": "read"
+  },
+  "owner_preference_save": {
+   "risk": "own_write"
+  },
+  "owner_preference_propose": {
+   "risk": "draft"
+  },
+  "owner_preference_forget": {
+   "risk": "own_write"
+  },
+  "morning_brief": {
+   "risk": "read"
+  },
+  "assistant_reminder": {
+   "risk": "own_write"
+  },
+  "admin_workflow": {
+   "risk": "own_write"
+  },
+  "assistant_connectors": {
+   "risk": "read"
+  },
+  "owner_welcome_save": {
+   "risk": "own_write"
+  }
+ },
+ "actions": {
+  "mail": [
+   "status"
+  ],
+  "web": [
+   "connector_list",
+   "project_status",
+   "status"
+  ]
+ }
+}

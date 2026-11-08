@@ -1,0 +1,12 @@
+{
+ "judge_model": "claude-haiku-5-5",
+ "judge_max_tokens": 900,
+ "location": "ZIP 31901 (Columbus, GA)",
+ "timezone": "America/New_York",
+ "suites": {
+  "quick": "6 core cases, about 20-30 minutes per browser",
+  "full": "all 15 cases, about 1.5-2 hours per browser"
+ },
+ "note": "Consumer web battery for /webbench (0.20.6). Dates are filled in when a run starts ({date+N}, {next_friday}, {next_sunday}).",
+ "judge_attempts": 3
+}

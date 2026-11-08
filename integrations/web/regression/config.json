@@ -1,0 +1,5 @@
+{
+ "judge_model": "claude-haiku-5-5",
+ "judge_max_tokens": 400,
+ "note": "The judge model is pinned and printed with every result; change it only together with a note in the build log."
+}

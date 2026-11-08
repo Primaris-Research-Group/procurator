@@ -1,0 +1,45 @@
+{
+ "id": "W03",
+ "name": "w03-weather-forecast",
+ "site": "weather.gov",
+ "lane_default": "home",
+ "start_url": "https://www.weather.gov/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages): on weather.gov, get the forecast for 31901 and tell me tomorrow's high.",
+ "hard_part": "Location box with an autocomplete list",
+ "key_nodes": [
+  {
+   "id": "forecast",
+   "description": "The point forecast for Columbus GA",
+   "evidence_any": [
+    "Columbus GA",
+    "Extended Forecast"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Forecast with tomorrow's high",
+  "evidence_any": [
+   "High:",
+   "°F"
+  ]
+ },
+ "answer_check": {
+  "description": "A °F high for tomorrow and the Columbus GA forecast area",
+  "patterns": [
+   "\\d{2,3}\\s*°?\\s*F",
+   "Columbus"
+  ]
+ },
+ "exercises": [
+  "autocomplete location box"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": false,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

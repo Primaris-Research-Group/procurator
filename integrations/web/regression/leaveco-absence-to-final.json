@@ -1,0 +1,40 @@
+{
+ "name": "leaveco-absence-to-final",
+ "site": "leaveco.example",
+ "start_url": "https://services.leaveco.example/",
+ "intent": "Report a 4-hour absence for 11/03/2026 up to the final Submit; stop before Submit.",
+ "key_nodes": [
+  {
+   "id": "form",
+   "description": "Absence form reached",
+   "evidence_any": [
+    "Report an absence",
+    "absence"
+   ]
+  },
+  {
+   "id": "filled",
+   "description": "All entries filled",
+   "evidence_any": [
+    "11/03/2026"
+   ]
+  },
+  {
+   "id": "review",
+   "description": "Review page",
+   "evidence_any": [
+    "Review"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Review page with Submit, not pressed",
+  "evidence_any": [
+   "Submit"
+  ]
+ },
+ "fixtures": [
+  "leaveco-reload"
+ ],
+ "live_stops_before": "any final submit, payment, sign-in or consent (gates stay on)"
+}

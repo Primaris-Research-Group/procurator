@@ -1,0 +1,65 @@
+{
+ "manifest_version": 2,
+ "id": "social",
+ "version": "0.1.0",
+ "title": "Social posts and workspace messages",
+ "description": "Post as yourself or a page you manage. Every post: exact publish preview (account, text, media, visibility), then /postsend. Real providers ship after the release; the mock site runs with the test profile.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "accounts": "multiple",
+ "auth": {
+  "type": "oauth2",
+  "scopes": [
+   "provider-specific; see oauth_store.PROVIDERS"
+  ]
+ },
+ "rate_limit": {
+  "per_hour": 4,
+  "per_day": 20,
+  "cooldown_s": 300
+ },
+ "events": [
+  "comment",
+  "reply",
+  "dm",
+  "mention",
+  "message"
+ ],
+ "tools": {
+  "social_accounts": {
+   "risk": "read"
+  },
+  "social_post_draft": {
+   "risk": "draft",
+   "outbound": true,
+   "audience": "public",
+   "account": "account",
+   "media": "media",
+   "note": "immutable draft; health text refused"
+  },
+  "social_post_review": {
+   "risk": "public",
+   "audience": "public",
+   "note": "sends the publish preview to the owner for /postsend"
+  },
+  "social_post_status": {
+   "risk": "read"
+  },
+  "social_post_cancel": {
+   "risk": "own_write",
+   "audience": "self"
+  }
+ },
+ "actions": {
+  "web": [
+   "social_accounts",
+   "social_post_draft",
+   "social_post_review",
+   "social_post_status",
+   "social_post_cancel",
+   "social_post_list"
+  ]
+ },
+ "setup": "Settings > Connections on the dashboard (one OAuth store for every provider)."
+}

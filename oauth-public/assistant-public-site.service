@@ -1,0 +1,21 @@
+[Unit]
+Description=PROCURATOR Assistant public OAuth information pages
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/sbin/nginx -t -c /opt/procurator/oauth-public/nginx.conf
+ExecStart=/usr/sbin/nginx -c /opt/procurator/oauth-public/nginx.conf -g "daemon off;"
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=3
+RuntimeDirectory=assistant-public-site
+RuntimeDirectoryMode=0755
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/run/assistant-public-site /var/log/nginx /var/lib/nginx
+
+[Install]
+WantedBy=multi-user.target

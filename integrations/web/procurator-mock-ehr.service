@@ -1,0 +1,18 @@
+[Unit]
+Description=PROCURATOR synthetic mock EHR (SMART on FHIR test portal; loopback only, synthetic data)
+After=network-online.target
+[Service]
+Type=simple
+ExecStart=/bin/sh -c 'exec /usr/bin/python3 /opt/procurator/integrations/web/mock_ehr.py serve --port 3351 --public https://assistant.example.com/assistant/dashboard/mock-ehr --today $(date +%%F) --redirect https://assistant.example.com/assistant/dashboard/health/callback --admin-token-file /var/lib/procurator-mock-ehr/admin-token'
+Restart=on-failure
+RestartSec=5
+DynamicUser=true
+StateDirectory=procurator-mock-ehr
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+[Install]
+WantedBy=multi-user.target

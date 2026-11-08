@@ -1,0 +1,36 @@
+{
+ "manifest_version": 2,
+ "id": "health-apple",
+ "version": "1.0.0",
+ "title": "Health: Apple Health companion",
+ "class": "health",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "token"
+ },
+ "tools": {
+  "health_sync_activity": {
+   "risk": "read"
+  },
+  "health_sync_devices": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "health_sync_activity",
+   "health_sync_devices"
+  ]
+ },
+ "setup": "/healthpair on the iPhone app.",
+ "min_data": [
+  "activity",
+  "sleep",
+  "vitals",
+  "body"
+ ],
+ "fixtures": [
+  "integrations/web/test_health_sync.py"
+ ]
+}

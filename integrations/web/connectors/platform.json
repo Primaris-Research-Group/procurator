@@ -1,0 +1,38 @@
+{
+ "manifest_version": 2,
+ "id": "platform",
+ "version": "1.0.0",
+ "title": "Platform internals",
+ "description": "Calls between PROCURATOR's own services and the deploy checks (no model-facing tools).",
+ "class": "general",
+ "source": "core",
+ "plugin": "broker",
+ "auth": {
+  "type": "local"
+ },
+ "tools": {},
+ "actions": {
+  "web": [
+   "activity_record",
+   "autostart_logins",
+   "gates_status",
+   "get",
+   "health_taint_check",
+   "look_status",
+   "mission_list",
+   "owner_fact_keys",
+   "purchase_cap",
+   "purchase_cards",
+   "site_list",
+   "status",
+   "task_stats",
+   "webpolicy"
+  ],
+  "mail": [
+   "assistant_address",
+   "cancel",
+   "review",
+   "status"
+  ]
+ }
+}

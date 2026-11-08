@@ -1,0 +1,23 @@
+{
+ "manifest_version": 2,
+ "id": "places",
+ "version": "1.0.0",
+ "title": "Places lookup (Google Places or OpenStreetMap)",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "api_key"
+ },
+ "tools": {
+  "places_search": {
+   "risk": "read"
+  }
+ },
+ "actions": {
+  "web": [
+   "places_search"
+  ]
+ },
+ "setup": "Optional Google Places API key: bin/set-web-key.sh places. Without it: OpenStreetMap Nominatim (no key, 1 request a second)."
+}

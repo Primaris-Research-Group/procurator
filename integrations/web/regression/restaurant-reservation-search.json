@@ -1,0 +1,24 @@
+{
+ "name": "restaurant-reservation-search",
+ "site": "opentable.com",
+ "start_url": "https://www.opentable.com/",
+ "intent": "Find a 7 PM table for 2 on Friday; stop before Complete reservation.",
+ "key_nodes": [
+  {
+   "id": "results",
+   "description": "Availability shown",
+   "evidence_any": [
+    "7:00 PM",
+    "PM"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Details page with Complete reservation, not pressed",
+  "evidence_any": [
+   "Complete reservation"
+  ]
+ },
+ "fixtures": [],
+ "live_stops_before": "any final submit, payment, sign-in or consent (gates stay on)"
+}

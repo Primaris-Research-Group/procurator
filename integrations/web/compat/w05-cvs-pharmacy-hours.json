@@ -1,0 +1,46 @@
+{
+ "id": "W05",
+ "name": "w05-cvs-pharmacy-hours",
+ "site": "cvs.com",
+ "lane_default": "home",
+ "start_url": "https://www.cvs.com/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages): on cvs.com, find Saturday pharmacy hours for the CVS nearest 31901.",
+ "hard_part": "Store locator, location-permission prompt, pop-ups",
+ "key_nodes": [
+  {
+   "id": "stores",
+   "description": "Store list near 31901",
+   "evidence_any": [
+    "31901",
+    "Columbus"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Store page with pharmacy hours",
+  "evidence_any": [
+   "Pharmacy",
+   "Sat"
+  ]
+ },
+ "answer_check": {
+  "description": "Saturday pharmacy hours and the store address",
+  "patterns": [
+   "(?i)sat\\w*",
+   "(?i)\\d{1,2}(?::\\d{2})?\\s*(?:a\\.?m\\.?|p\\.?m\\.?)|24 hours|closed"
+  ]
+ },
+ "exercises": [
+  "store locator",
+  "pop-ups"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": true,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

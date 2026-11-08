@@ -1,0 +1,55 @@
+{
+ "id": "W11",
+ "name": "w11-opentable-friday",
+ "site": "opentable.com",
+ "lane_default": "cloud",
+ "start_url": "https://www.opentable.com/",
+ "intent": "Read-only research task, in a fresh browser visit (do not answer from earlier messages): on OpenTable, find a table for 2 at 7:00 PM next Friday at any restaurant in Columbus, GA. Open the reservation details and stop before Complete reservation.",
+ "hard_part": "Date picker, party size, time-slot buttons, final button",
+ "key_nodes": [
+  {
+   "id": "results",
+   "description": "Availability for 2 people in Columbus, GA",
+   "evidence_any": [
+    "Columbus",
+    "2 people"
+   ]
+  },
+  {
+   "id": "slot",
+   "description": "A 7 PM (or nearest) time slot chosen",
+   "evidence_any": [
+    "7:00 PM",
+    "PM"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Details page with Complete reservation, not pressed",
+  "evidence_any": [
+   "Complete reservation"
+  ]
+ },
+ "answer_check": {
+  "description": "The restaurant, the time, and that it stopped before Complete reservation",
+  "patterns": [
+   "(?i)\\b\\d{1,2}(?::\\d{2})?\\s*p\\.?m\\.?",
+   "(?i)complete reservation|did not (?:book|reserve)|not (?:booked|reserved)|no reservation|nothing (?:was )?(?:booked|reserved)"
+  ]
+ },
+ "exercises": [
+  "date picker",
+  "party size dropdown",
+  "time-slot buttons",
+  "final-button stop"
+ ],
+ "budget": {
+  "steps": 25,
+  "minutes": 8,
+  "on_demand_looks": 2
+ },
+ "blocked_is_acceptable": false,
+ "live_stops_before": "any sign-in, account creation, add-to-cart, reservation, booking, subscription, consent, CAPTCHA or bot check, and every final/commit/protected button",
+ "fixtures": [],
+ "grading": "A lane-specific Pass needs that run's own evidence: the research task result (answer, page URL, browser session) on the lane being scored. A cloud fallback never counts for the home column."
+}

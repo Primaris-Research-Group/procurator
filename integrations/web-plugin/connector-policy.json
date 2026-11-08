@@ -1,0 +1,994 @@
+{
+ "audiences": {
+  "person": {
+   "auto_cc": "bcc",
+   "health": "grant",
+   "preview": "send",
+   "reads": "the named recipients"
+  },
+  "public": {
+   "auto_cc": "off",
+   "health": "block",
+   "preview": "publish",
+   "reads": "anyone on the internet"
+  },
+  "self": {
+   "auto_cc": "off",
+   "health": "allow",
+   "preview": "none",
+   "reads": "only the owner"
+  },
+  "workspace": {
+   "auto_cc": "off",
+   "health": "block",
+   "preview": "publish",
+   "reads": "everyone in the workspace or channel"
+  }
+ },
+ "manifest_version": 2,
+ "mode": "enforce",
+ "tools": {
+  "account_balances": {
+   "class": "general",
+   "connector": "finance-readonly",
+   "risk": "read"
+  },
+  "accounts_list": {
+   "class": "general",
+   "connector": "core-accounts",
+   "risk": "read"
+  },
+  "activity_get": {
+   "class": "general",
+   "connector": "activity-log",
+   "risk": "read"
+  },
+  "activity_report": {
+   "class": "general",
+   "connector": "activity-log",
+   "risk": "read"
+  },
+  "activity_search": {
+   "class": "general",
+   "connector": "activity-log",
+   "risk": "read"
+  },
+  "activity_upcoming": {
+   "class": "general",
+   "connector": "activity-log",
+   "risk": "read"
+  },
+  "admin_workflow": {
+   "class": "general",
+   "connector": "assistant-core",
+   "risk": "own_write"
+  },
+  "assistant_capabilities": {
+   "class": "general",
+   "connector": "assistant-core",
+   "risk": "read"
+  },
+  "assistant_connectors": {
+   "class": "general",
+   "connector": "assistant-core",
+   "risk": "read"
+  },
+  "assistant_reminder": {
+   "class": "general",
+   "connector": "assistant-core",
+   "risk": "own_write"
+  },
+  "build_cancel": {
+   "class": "general",
+   "connector": "builds",
+   "edition": "x",
+   "risk": "own_write"
+  },
+  "build_prepare": {
+   "class": "general",
+   "connector": "builds",
+   "edition": "x",
+   "risk": "draft"
+  },
+  "build_status": {
+   "class": "general",
+   "connector": "builds",
+   "edition": "x",
+   "risk": "read"
+  },
+  "calendar_add_reminder": {
+   "class": "general",
+   "connector": "google-calendar",
+   "risk": "own_write"
+  },
+  "calendar_apple_create_event": {
+   "class": "general",
+   "connector": "core-accounts",
+   "risk": "own_write"
+  },
+  "calendar_apple_events": {
+   "class": "general",
+   "connector": "core-accounts",
+   "risk": "read"
+  },
+  "calendar_calendars": {
+   "class": "general",
+   "connector": "google-calendar",
+   "risk": "read"
+  },
+  "calendar_create_event": {
+   "audience": "person",
+   "class": "general",
+   "connector": "google-calendar",
+   "destination": "guests",
+   "outbound": true,
+   "risk": "own_write"
+  },
+  "calendar_events": {
+   "class": "general",
+   "connector": "google-calendar",
+   "risk": "read"
+  },
+  "calendar_freebusy": {
+   "class": "general",
+   "connector": "google-calendar",
+   "risk": "read"
+  },
+  "calendar_request_delete": {
+   "class": "general",
+   "connector": "google-calendar",
+   "risk": "owner"
+  },
+  "calendar_update_event": {
+   "audience": "person",
+   "class": "general",
+   "connector": "google-calendar",
+   "destination": "guests",
+   "outbound": true,
+   "risk": "own_write"
+  },
+  "clinical_calc": {
+   "class": "general",
+   "connector": "research",
+   "risk": "read"
+  },
+  "connections_list": {
+   "class": "general",
+   "connector": "connections",
+   "risk": "read"
+  },
+  "contacts_apple_search": {
+   "class": "general",
+   "connector": "core-accounts",
+   "risk": "read"
+  },
+  "contacts_search": {
+   "class": "general",
+   "connector": "google-contacts",
+   "risk": "read"
+  },
+  "devices_list": {
+   "class": "general",
+   "connector": "platform-stream",
+   "risk": "read"
+  },
+  "drive_read_document": {
+   "class": "general",
+   "connector": "documents",
+   "risk": "read"
+  },
+  "events_get": {
+   "class": "general",
+   "connector": "inbound-events",
+   "risk": "read"
+  },
+  "events_list": {
+   "class": "general",
+   "connector": "inbound-events",
+   "risk": "read"
+  },
+  "evidence_search": {
+   "class": "general",
+   "connector": "research",
+   "risk": "read"
+  },
+  "flight_fares": {
+   "class": "general",
+   "connector": "research",
+   "risk": "read"
+  },
+  "flight_search": {
+   "class": "general",
+   "connector": "research",
+   "risk": "read"
+  },
+  "gmail_attachment_read": {
+   "class": "general",
+   "connector": "documents",
+   "risk": "read"
+  },
+  "health_bookings": {
+   "class": "health",
+   "connector": "health-core",
+   "risk": "read"
+  },
+  "health_calendar_plan": {
+   "class": "health",
+   "connector": "health-core",
+   "risk": "draft"
+  },
+  "health_calendar_record": {
+   "class": "health",
+   "connector": "health-core",
+   "risk": "own_write"
+  },
+  "health_call_brief": {
+   "class": "health",
+   "connector": "health-core",
+   "risk": "draft"
+  },
+  "health_coach_answers": {
+   "class": "health",
+   "connector": "health-coach",
+   "risk": "own_write"
+  },
+  "health_coach_balance": {
+   "class": "health",
+   "connector": "health-coach",
+   "risk": "read"
+  },
+  "health_coach_metric": {
+   "class": "health",
+   "connector": "health-coach",
+   "risk": "own_write"
+  },
+  "health_coach_metrics": {
+   "class": "health",
+   "connector": "health-coach",
+   "risk": "read"
+  },
+  "health_coach_plan": {
+   "class": "health",
+   "connector": "health-coach",
+   "risk": "draft"
+  },
+  "health_coach_questionnaire": {
+   "class": "health",
+   "connector": "health-coach",
+   "risk": "read"
+  },
+  "health_coach_status": {
+   "class": "health",
+   "connector": "health-coach",
+   "risk": "read"
+  },
+  "health_digest": {
+   "class": "health",
+   "connector": "health-core",
+   "risk": "read"
+  },
+  "health_effect_begin": {
+   "class": "health",
+   "connector": "health-core",
+   "risk": "draft"
+  },
+  "health_effect_dispatch": {
+   "audience": "person",
+   "class": "health",
+   "connector": "health-core",
+   "risk": "external"
+  },
+  "health_effect_get": {
+   "class": "health",
+   "connector": "health-core",
+   "risk": "read"
+  },
+  "health_effect_reconcile": {
+   "class": "health",
+   "connector": "health-core",
+   "risk": "read"
+  },
+  "health_effect_settle": {
+   "class": "health",
+   "connector": "health-core",
+   "risk": "own_write"
+  },
+  "health_grant_propose": {
+   "class": "health",
+   "connector": "health-core",
+   "risk": "draft"
+  },
+  "health_nutrition_custom_food": {
+   "class": "health",
+   "connector": "health-nutrition",
+   "risk": "own_write"
+  },
+  "health_nutrition_day": {
+   "class": "health",
+   "connector": "health-nutrition",
+   "risk": "read"
+  },
+  "health_nutrition_edit": {
+   "class": "health",
+   "connector": "health-nutrition",
+   "risk": "own_write"
+  },
+  "health_nutrition_estimate": {
+   "class": "health",
+   "connector": "health-nutrition",
+   "risk": "read"
+  },
+  "health_nutrition_food": {
+   "class": "health",
+   "connector": "health-nutrition",
+   "risk": "read"
+  },
+  "health_nutrition_food_search": {
+   "class": "health",
+   "connector": "health-nutrition",
+   "risk": "read"
+  },
+  "health_nutrition_goal": {
+   "class": "health",
+   "connector": "health-nutrition",
+   "risk": "own_write"
+  },
+  "health_nutrition_history": {
+   "class": "health",
+   "connector": "health-nutrition",
+   "risk": "read"
+  },
+  "health_nutrition_log": {
+   "class": "health",
+   "connector": "health-nutrition",
+   "risk": "own_write"
+  },
+  "health_nutrition_measure": {
+   "class": "health",
+   "connector": "health-nutrition",
+   "risk": "own_write"
+  },
+  "health_nutrition_profile": {
+   "class": "health",
+   "connector": "health-nutrition",
+   "risk": "own_write"
+  },
+  "health_nutrition_trends": {
+   "class": "health",
+   "connector": "health-nutrition",
+   "risk": "read"
+  },
+  "health_pharmacy_eligibility": {
+   "class": "health",
+   "connector": "health-pharmacy",
+   "risk": "read"
+  },
+  "health_pharmacy_list": {
+   "class": "health",
+   "connector": "health-pharmacy",
+   "risk": "read"
+  },
+  "health_pharmacy_reconcile": {
+   "class": "health",
+   "connector": "health-pharmacy",
+   "risk": "read"
+  },
+  "health_pharmacy_refill": {
+   "audience": "person",
+   "class": "health",
+   "connector": "health-pharmacy",
+   "risk": "external"
+  },
+  "health_pharmacy_refill_status": {
+   "class": "health",
+   "connector": "health-pharmacy",
+   "risk": "read"
+  },
+  "health_portal_book": {
+   "audience": "person",
+   "class": "health",
+   "connector": "health-portal",
+   "risk": "external"
+  },
+  "health_portal_cancel": {
+   "audience": "person",
+   "class": "health",
+   "connector": "health-portal",
+   "risk": "external"
+  },
+  "health_portal_read": {
+   "class": "health",
+   "connector": "health-portal",
+   "risk": "read"
+  },
+  "health_portal_reconcile": {
+   "class": "health",
+   "connector": "health-portal",
+   "risk": "read"
+  },
+  "health_portal_reschedule": {
+   "audience": "person",
+   "class": "health",
+   "connector": "health-portal",
+   "risk": "external"
+  },
+  "health_portal_status": {
+   "class": "health",
+   "connector": "health-portal",
+   "risk": "read"
+  },
+  "health_receipt": {
+   "class": "health",
+   "connector": "health-core",
+   "risk": "owner"
+  },
+  "health_status": {
+   "class": "health",
+   "connector": "health-core",
+   "risk": "read"
+  },
+  "health_sync_activity": {
+   "class": "health",
+   "connector": "health-apple",
+   "risk": "read"
+  },
+  "health_sync_devices": {
+   "class": "health",
+   "connector": "health-apple",
+   "risk": "read"
+  },
+  "home_command": {
+   "bounds": {
+    "brightness": {
+     "max": 100,
+     "min": 0
+    },
+    "setpoint": {
+     "max": 28,
+     "min": 16
+    }
+   },
+   "class": "general",
+   "confirm": "readback",
+   "connector": "home",
+   "effect": "physical",
+   "risk": "own_write",
+   "safety_tier": "access"
+  },
+  "home_devices": {
+   "class": "general",
+   "connector": "home",
+   "risk": "read"
+  },
+  "home_snapshot": {
+   "class": "general",
+   "connector": "home",
+   "risk": "read"
+  },
+  "home_status": {
+   "class": "general",
+   "connector": "home",
+   "risk": "read"
+  },
+  "library_list": {
+   "class": "general",
+   "connector": "library",
+   "risk": "read"
+  },
+  "library_read": {
+   "class": "general",
+   "connector": "library",
+   "risk": "read"
+  },
+  "library_search": {
+   "class": "general",
+   "connector": "library",
+   "risk": "read"
+  },
+  "mail_accounts": {
+   "class": "general",
+   "connector": "gmail",
+   "risk": "read"
+  },
+  "mail_assistant_inbox": {
+   "class": "general",
+   "connector": "gmail",
+   "risk": "read"
+  },
+  "mail_cancel_draft": {
+   "class": "general",
+   "connector": "gmail",
+   "risk": "own_write"
+  },
+  "mail_create_draft": {
+   "account": "account",
+   "audience": "person",
+   "class": "general",
+   "connector": "gmail",
+   "destination": "to",
+   "media": "attachments",
+   "outbound": true,
+   "risk": "draft"
+  },
+  "mail_get_draft": {
+   "class": "general",
+   "connector": "gmail",
+   "risk": "read"
+  },
+  "mail_icloud_folders": {
+   "class": "general",
+   "connector": "icloud-mail",
+   "risk": "read"
+  },
+  "mail_icloud_read": {
+   "class": "general",
+   "connector": "icloud-mail",
+   "risk": "read"
+  },
+  "mail_icloud_recent": {
+   "class": "general",
+   "connector": "icloud-mail",
+   "risk": "read"
+  },
+  "mail_icloud_search": {
+   "class": "general",
+   "connector": "icloud-mail",
+   "risk": "read"
+  },
+  "mail_manage": {
+   "class": "general",
+   "connector": "gmail",
+   "risk": "own_write"
+  },
+  "mail_request_review": {
+   "class": "general",
+   "connector": "gmail",
+   "risk": "owner"
+  },
+  "mail_request_trash": {
+   "class": "general",
+   "connector": "gmail",
+   "risk": "owner"
+  },
+  "mail_save_icloud_draft": {
+   "audience": "person",
+   "class": "general",
+   "connector": "icloud-mail",
+   "destination": "to",
+   "outbound": true,
+   "risk": "draft"
+  },
+  "market_quotes": {
+   "class": "general",
+   "connector": "research",
+   "risk": "read"
+  },
+  "media_add_drive": {
+   "class": "general",
+   "connector": "media",
+   "risk": "draft"
+  },
+  "media_list": {
+   "class": "general",
+   "connector": "media",
+   "risk": "read"
+  },
+  "memory_note": {
+   "class": "general",
+   "connector": "memory",
+   "risk": "own_write"
+  },
+  "memory_search": {
+   "class": "general",
+   "connector": "memory",
+   "risk": "read"
+  },
+  "mission_brief": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "read"
+  },
+  "mission_compose": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "owner"
+  },
+  "mission_compose_attach": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "draft"
+  },
+  "mission_deadline": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "own_write"
+  },
+  "mission_fact": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "own_write"
+  },
+  "mission_get": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "read"
+  },
+  "mission_import": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "own_write"
+  },
+  "mission_list": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "read"
+  },
+  "mission_log": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "read"
+  },
+  "mission_next": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "read"
+  },
+  "mission_propose_done": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "own_write"
+  },
+  "mission_question": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "owner"
+  },
+  "mission_read": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "read"
+  },
+  "mission_send_upload_link": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "owner"
+  },
+  "mission_thread": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "own_write"
+  },
+  "mission_wake": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "own_write"
+  },
+  "mission_watch": {
+   "class": "general",
+   "connector": "missions",
+   "risk": "own_write"
+  },
+  "morning_brief": {
+   "class": "general",
+   "connector": "assistant-core",
+   "risk": "read"
+  },
+  "news_headlines": {
+   "class": "general",
+   "connector": "research",
+   "risk": "read"
+  },
+  "npi_lookup": {
+   "class": "general",
+   "connector": "npi-registry",
+   "risk": "read"
+  },
+  "owner_preference_forget": {
+   "class": "general",
+   "connector": "assistant-core",
+   "risk": "own_write"
+  },
+  "owner_preference_propose": {
+   "class": "general",
+   "connector": "assistant-core",
+   "risk": "draft"
+  },
+  "owner_preference_save": {
+   "class": "general",
+   "connector": "assistant-core",
+   "risk": "own_write"
+  },
+  "owner_preferences": {
+   "class": "general",
+   "connector": "assistant-core",
+   "risk": "read"
+  },
+  "owner_profile": {
+   "class": "general",
+   "connector": "assistant-core",
+   "risk": "read"
+  },
+  "owner_welcome_save": {
+   "class": "general",
+   "connector": "assistant-core",
+   "risk": "own_write"
+  },
+  "phone_call_status": {
+   "class": "general",
+   "connector": "phone",
+   "risk": "read"
+  },
+  "phone_prepare_call": {
+   "audience": "person",
+   "class": "general",
+   "connector": "phone",
+   "destination": "to",
+   "outbound": true,
+   "risk": "draft"
+  },
+  "phone_press_keys": {
+   "class": "general",
+   "connector": "phone",
+   "risk": "own_write"
+  },
+  "phone_read_call": {
+   "class": "general",
+   "connector": "phone",
+   "risk": "read"
+  },
+  "phone_review_call": {
+   "class": "general",
+   "connector": "phone",
+   "risk": "owner"
+  },
+  "places_search": {
+   "class": "general",
+   "connector": "places",
+   "risk": "read"
+  },
+  "procurator_manual": {
+   "class": "general",
+   "connector": "assistant-core",
+   "risk": "read"
+  },
+  "project_sources": {
+   "class": "general",
+   "connector": "documents",
+   "risk": "read"
+  },
+  "sms_cancel": {
+   "class": "general",
+   "connector": "sms",
+   "risk": "own_write"
+  },
+  "sms_draft": {
+   "audience": "person",
+   "class": "general",
+   "connector": "sms",
+   "destination": "to",
+   "outbound": true,
+   "risk": "draft"
+  },
+  "sms_review": {
+   "class": "general",
+   "connector": "sms",
+   "risk": "owner"
+  },
+  "sms_status": {
+   "class": "general",
+   "connector": "sms",
+   "risk": "read"
+  },
+  "social_accounts": {
+   "class": "general",
+   "connector": "social",
+   "risk": "read"
+  },
+  "social_post_cancel": {
+   "audience": "self",
+   "class": "general",
+   "connector": "social",
+   "risk": "own_write"
+  },
+  "social_post_draft": {
+   "account": "account",
+   "audience": "public",
+   "class": "general",
+   "connector": "social",
+   "media": "media",
+   "outbound": true,
+   "risk": "draft"
+  },
+  "social_post_review": {
+   "audience": "public",
+   "class": "general",
+   "connector": "social",
+   "risk": "public"
+  },
+  "social_post_status": {
+   "class": "general",
+   "connector": "social",
+   "risk": "read"
+  },
+  "tasks_add": {
+   "class": "general",
+   "connector": "google-tasks",
+   "risk": "own_write"
+  },
+  "tasks_complete": {
+   "class": "general",
+   "connector": "google-tasks",
+   "risk": "own_write"
+  },
+  "tasks_list": {
+   "class": "general",
+   "connector": "google-tasks",
+   "risk": "read"
+  },
+  "tasks_lists": {
+   "class": "general",
+   "connector": "google-tasks",
+   "risk": "read"
+  },
+  "tasks_update": {
+   "class": "general",
+   "connector": "google-tasks",
+   "risk": "own_write"
+  },
+  "travel_search_links": {
+   "class": "general",
+   "connector": "research",
+   "risk": "read"
+  },
+  "web_browser_action_status": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_browser_close": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "own_write"
+  },
+  "web_browser_open": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_browser_prepare": {
+   "audience": "person",
+   "class": "general",
+   "connector": "browser",
+   "destination": "id",
+   "outbound": true,
+   "risk": "external"
+  },
+  "web_browser_review": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "owner"
+  },
+  "web_browser_snapshot": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_browser_status": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_home_signin": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "owner"
+  },
+  "web_look": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_owner_facts": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_page_tool": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_route": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_send_signin_link": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "owner"
+  },
+  "web_send_takeover_link": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "owner"
+  },
+  "web_send_watch_link": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "owner"
+  },
+  "web_site_logins": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_site_policy": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_site_signup": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "draft"
+  },
+  "web_task_complete": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "own_write"
+  },
+  "web_task_get": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_task_list": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_task_playbook": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_task_prepare": {
+   "audience": "person",
+   "class": "general",
+   "connector": "browser",
+   "destination": "url",
+   "outbound": true,
+   "risk": "external"
+  },
+  "web_task_review": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "owner"
+  },
+  "web_task_stats": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "read"
+  },
+  "web_task_step": {
+   "audience": "person",
+   "class": "general",
+   "connector": "browser",
+   "destination": "id",
+   "outbound": true,
+   "risk": "external"
+  },
+  "web_upload_stage": {
+   "class": "general",
+   "connector": "browser",
+   "risk": "draft"
+  },
+  "youtube_search": {
+   "class": "general",
+   "connector": "research",
+   "risk": "read"
+  }
+ },
+ "version": 3
+}

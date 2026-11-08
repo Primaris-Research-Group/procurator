@@ -1,0 +1,14 @@
+{
+ "name": "CVS patient details: State dropdown hidden behind a styled button (Nov 4)",
+ "url": "https://www.cvs.com/scheduling/patient-details",
+ "site": "cvs.com",
+ "reason": "seed",
+ "controls": [
+  {"label": "First name", "tag": "input"},
+  {"label": "Date of birth", "tag": "input"},
+  {"label": "State", "tag": "select", "hidden_native": true, "options_include": ["Georgia", "Alabama"]},
+  {"label": "ZIP code", "tag": "input"}
+ ],
+ "targets": [{"label": "Continue", "class": "navigate"}],
+ "verify": null
+}

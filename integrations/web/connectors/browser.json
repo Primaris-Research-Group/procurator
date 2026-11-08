@@ -1,0 +1,164 @@
+{
+ "manifest_version": 2,
+ "id": "browser",
+ "version": "1.0.0",
+ "title": "Web browser (cloud and home PC)",
+ "description": "Public and signed-in web tasks through the private broker; final actions need the owner's hash-bound approval.",
+ "class": "general",
+ "source": "core",
+ "plugin": "procurator-web",
+ "auth": {
+  "type": "owner_signin"
+ },
+ "tools": {
+  "web_browser_status": {
+   "risk": "read"
+  },
+  "web_browser_open": {
+   "risk": "read",
+   "note": "opens a page; nothing is submitted"
+  },
+  "web_task_stats": {
+   "risk": "read"
+  },
+  "web_site_logins": {
+   "risk": "read"
+  },
+  "web_site_signup": {
+   "risk": "draft",
+   "note": "fills a sign-up form; the owner presses create"
+  },
+  "web_send_signin_link": {
+   "risk": "owner"
+  },
+  "web_home_signin": {
+   "risk": "owner"
+  },
+  "web_send_takeover_link": {
+   "risk": "owner"
+  },
+  "web_browser_snapshot": {
+   "risk": "read"
+  },
+  "web_browser_prepare": {
+   "risk": "external",
+   "outbound": true,
+   "destination": "id",
+   "audience": "person"
+  },
+  "web_browser_review": {
+   "risk": "owner"
+  },
+  "web_browser_action_status": {
+   "risk": "read"
+  },
+  "web_browser_close": {
+   "risk": "own_write"
+  },
+  "web_task_prepare": {
+   "risk": "external",
+   "outbound": true,
+   "destination": "url",
+   "audience": "person"
+  },
+  "web_task_step": {
+   "risk": "external",
+   "outbound": true,
+   "destination": "id",
+   "audience": "person"
+  },
+  "web_task_review": {
+   "risk": "owner"
+  },
+  "web_task_get": {
+   "risk": "read"
+  },
+  "web_task_list": {
+   "risk": "read"
+  },
+  "web_task_complete": {
+   "risk": "own_write"
+  },
+  "web_task_playbook": {
+   "risk": "read"
+  },
+  "web_look": {
+   "risk": "read"
+  },
+  "web_route": {
+   "risk": "read"
+  },
+  "web_owner_facts": {
+   "risk": "read"
+  },
+  "web_upload_stage": {
+   "risk": "draft"
+  },
+  "web_send_watch_link": {
+   "risk": "owner"
+  },
+  "web_site_policy": {
+   "risk": "read"
+  },
+  "web_page_tool": {
+   "risk": "read",
+   "note": "structured reading tools a page offers; cart/checkout refused"
+  }
+ },
+ "actions": {
+  "web": [
+   "bench_case_begin",
+   "bench_case_end",
+   "bench_report",
+   "bench_stop",
+   "cancel",
+   "close",
+   "get",
+   "health_policy",
+   "home_signin_request",
+   "lane_status",
+   "look",
+   "open",
+   "owner_fact_keys",
+   "owner_screenshot",
+   "page_tool",
+   "prepare",
+   "recall_context",
+   "review",
+   "route",
+   "site_list",
+   "site_signin_events",
+   "site_signin_request",
+   "site_signup",
+   "site_takeover_page",
+   "snapshot",
+   "status",
+   "takeover_request",
+   "task_activate",
+   "task_complete",
+   "task_cost",
+   "task_delegate",
+   "task_escalate",
+   "task_get",
+   "task_lane",
+   "task_list",
+   "task_pause",
+   "task_playbook",
+   "task_prepare",
+   "task_resume",
+   "task_resume_claim",
+   "task_resume_receipt",
+   "task_review",
+   "task_stats",
+   "task_step",
+   "task_stop",
+   "task_week",
+   "trace_link",
+   "upload_stage",
+   "viewport_set",
+   "watch_link",
+   "webpolicy"
+  ]
+ },
+ "setup": "Browserbase key (bin/connect-browserbase.py); optional home PC worker."
+}

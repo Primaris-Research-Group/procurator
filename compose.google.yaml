@@ -1,0 +1,9 @@
+# Enable only after the pinned binary and owner OAuth state have been provisioned.
+# The operator adds this file to compose.yaml's include list after setup.
+services:
+  openclaw-gateway:
+    volumes:
+      - ./vendor/gog-0.47.1:/opt/procurator/vendor/gog-0.47.1:ro
+      - ./bin/google-mcp.cjs:/opt/procurator/bin/google-mcp.cjs:ro
+      - ./integrations/google-output:/opt/procurator/integrations/google-output:ro
+      - ./google:/opt/procurator/google

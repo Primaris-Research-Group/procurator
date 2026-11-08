@@ -1,0 +1,26 @@
+{
+ "name": "cvs-rx-refill-status",
+ "site": "cvs.com",
+ "start_url": "https://www.cvs.com/pharmacy",
+ "intent": "Read a prescription's refill status (signed in; read only).",
+ "key_nodes": [
+  {
+   "id": "rx_list",
+   "description": "Prescription list",
+   "evidence_any": [
+    "Prescriptions",
+    "Refill"
+   ]
+  }
+ ],
+ "final_state": {
+  "description": "Status line read back to the owner",
+  "evidence_any": [
+   "Ready",
+   "In progress",
+   "Refill"
+  ]
+ },
+ "fixtures": [],
+ "live_stops_before": "any final submit, payment, sign-in or consent (gates stay on)"
+}

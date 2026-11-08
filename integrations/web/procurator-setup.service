@@ -1,0 +1,9 @@
+[Unit]
+Description=PROCURATOR first-run setup applier (runs only when the browser setup page asks)
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/procurator/integrations/web/setup_wizard.py apply --state-dir /var/lib/procurator-web
+Environment=PROCURATOR_INSTALL_DIR=/opt/procurator
+UMask=0077
+TimeoutStartSec=420

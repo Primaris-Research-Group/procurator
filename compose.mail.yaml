@@ -1,0 +1,7 @@
+services:
+  openclaw-gateway:
+    environment:
+      PROCURATOR_OWNER_ID: ${PROCURATOR_OWNER_ID:-}
+    volumes:
+      - ./integrations/mail-plugin:/opt/procurator/integrations/mail-plugin:ro
+      - /run/procurator-mail:/run/procurator-mail

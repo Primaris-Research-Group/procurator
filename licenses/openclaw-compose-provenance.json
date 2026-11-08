@@ -1,0 +1,7 @@
+{
+  "source_url": "https://raw.githubusercontent.com/openclaw/openclaw/v2026.10.9/docker-compose.yml",
+  "release": "v2026.10.9",
+  "retrieved_date": "2026-11-01",
+  "sha256": "8a9d5279021958ae020aa9863f1401983072924d5c789a9d32ff675fd49170c8",
+  "validation": "Static checks only; no image pull, container startup, server provisioning, account connection, or live communication."
+}
