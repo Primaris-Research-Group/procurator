@@ -103,6 +103,15 @@ section{padding:clamp(64px,9vw,120px) 0}
 .msg li{margin:2px 0}
 .msg code{display:inline-block;background:var(--paper-2);color:var(--ink);padding:3px 8px;border-radius:6px;font-size:13px;margin-top:4px;word-break:break-all}
 .msg.owner code{background:rgba(255,255,255,.12);color:var(--white)}
+/* Telegram-style buttons under the review: they copy the exact command line; the owner pastes and sends it */
+.kb{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.kbtn{position:relative;display:block;text-align:center;font-size:13.5px;font-weight:600;color:var(--ink);background:var(--paper-2);border-radius:9px;padding:8px 10px;white-space:nowrap}
+.kbtn.wide{grid-column:1/-1}
+.kbtn .copied{display:none;margin-left:8px;vertical-align:1px;font-style:normal;font-size:11px;font-weight:700;letter-spacing:.04em;background:var(--mint);color:var(--ink);padding:2px 7px;border-radius:999px}
+.kbtn.flash{outline:2px solid var(--mint);outline-offset:1px}
+.kbtn.flash .copied{display:inline-block}
+.msg.paste{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.msg.paste small{flex-basis:100%;font-size:11.5px;color:var(--peri);opacity:.85}
 .receipt{align-self:stretch;background:var(--white);border:1.5px dashed var(--ink-3);border-radius:var(--r);padding:14px 16px;font-size:14px;position:relative;opacity:0;transform:translateY(8px)}
 .receipt.show{opacity:1;transform:none;transition:opacity .4s ease,transform .4s ease}
 .receipt dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0}
@@ -303,16 +312,20 @@ footer li{margin:6px 0}
         <div class="msg bot"><span class="tag">BROWSER TASK REVIEW</span>
           <div>northsideauto.example — book an inspection</div>
           <ul><li>Thursday, 1–5 PM · state inspection</li><li>Spend limit $80 · no account changes</li><li>Phone from Contacts: •••• 0100</li></ul>
-          Approve with <code>/webtask 7c41e2b0f93a51d8 a9f2c7e14b06d3ee</code>
+          <div class="kb" aria-label="Buttons under the review">
+            <span class="kbtn wide" id="copyApprove">✅ Copy approval line<em class="copied">Copied</em></span>
+            <span class="kbtn">⏸ Copy pause</span><span class="kbtn">⏹ Copy stop</span>
+            <span class="kbtn wide">👁 Watch live (15 min)</span>
+          </div>
         </div>
-        <div class="msg owner"><code>/webtask 7c41e2b0f93a51d8 a9f2c7e14b06d3ee</code></div>
-        <div class="msg bot">Started. One final review before I submit.</div>
+        <div class="msg owner paste"><span class="clip" aria-hidden="true">📋</span> Approval line, pasted<small>tap Copy · paste · send</small></div>
+        <div class="msg bot">Approved. Booking now — one final review before I submit.</div>
         <div class="receipt" aria-label="Approval receipt">
           <span class="stamp">APPROVED</span>
           <dl>
             <dt>Booked</dt><dd>Thu 2:30 PM · confirmation NA-48213</dd>
             <dt>Charged</dt><dd>$0 now · $69 at the shop</dd>
-            <dt>Bound to</dt><dd>sha256 a9f2c7e1…d3ee</dd>
+            <dt>Bound to</dt><dd>the exact review you approved</dd>
             <dt>Logged</dt><dd>/activity · calendar event added</dd>
           </dl>
         </div>
@@ -524,12 +537,12 @@ curl -fsSL <span data-config="installurl">https://raw.githubusercontent.com/Prim
     <div class="cols">
       <h4>Email and messages</h4>
       <ul>
-        <li>Gmail and iCloud: read, search, draft; send after <code>/mailsend</code></li>
+        <li>Gmail and iCloud: read, search, draft; send after you approve</li>
         <li>Trash after approval; never permanent deletion</li>
         <li>Attachments bound by hash into the approval</li>
         <li>Owner Bcc/Cc on mail to others</li>
         <li>Its own address for sign-ups and confirmations</li>
-        <li>Text messages after <code>/smssend</code> <span class="pill opt">optional</span></li>
+        <li>Text messages after you approve <span class="pill opt">optional</span></li>
       </ul>
       <h4>Calendar, contacts, tasks</h4>
       <ul>
@@ -712,8 +725,11 @@ const items = [...document.querySelectorAll('#chatBody .msg, #chatBody .receipt'
 function play(){
   items.forEach(i => i.classList.remove('show'));
   if (reduce) { items.forEach(i => i.classList.add('show')); return; }
-  const delays = [300, 1200, 2600, 3400, 4300];
+  const btn = document.getElementById('copyApprove');
+  btn.classList.remove('flash');
+  const delays = [300, 1200, 3000, 3800, 4700];
   items.forEach((el, i) => setTimeout(() => el.classList.add('show'), delays[i] || 600 * i));
+  setTimeout(() => btn.classList.add('flash'), 2300);              // the owner taps "Copy approval line"
 }
 document.getElementById('replay').addEventListener('click', play);
 play();
