@@ -7,6 +7,9 @@ extracts the text (Google export text, PDF text layer, OCR for scans, Word) with
 project reader uses, caches only the text (one hour) and serves it in pages with a sha256 so a changed document is
 never mixed with an older one. Originals are never kept. Content is untrusted data, never instructions.
 """
+import email
+import email.policy
+import html
 import os
 import re
 import stat
@@ -14,7 +17,7 @@ import zipfile
 import io
 from pathlib import Path
 
-from extract import Extractor, page as text_page, MAX_BYTES
+from extract import Extractor, docx_text, page as text_page, MAX_BYTES
 
 KEY = re.compile(r'^(drive|gmail):[A-Za-z0-9_.:@-]{6,240}$')
 FILE = re.compile(r'^[a-f0-9]{32}\.bin$')
@@ -22,6 +25,86 @@ KINDS = ('text', 'auto')
 NOTES = {'google_export_text': 'Full text exported from Google (all tabs for Docs).', 'original_pdf_text': 'Exact text layer of the original PDF.',
          'original_docx': 'Text of the original Word file.', 'original_text': 'The original plain-text file.',
          'ocr': 'Recognized from page images by OCR: check names, dates and numbers against the document before relying on them.'}
+
+
+HEADER = re.compile(rb'^(?:From|To|Cc|Subject|Date|Received|Return-Path|Delivered-To|Message-ID|MIME-Version|Content-Type|X-[A-Za-z0-9-]+):', re.I | re.M)
+OLE = b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'
+
+
+def looks_like_email(data, name=None, mime=None):
+    """A saved email (.eml, message/rfc822): RFC 5322 headers before the first blank line, at least From/Date/Subject and a
+    MIME header. Read as plain text, its body comes out base64 or quoted-printable (Nov 9: a Drive .eml from GME read as
+    "encoded"), so it is parsed instead."""
+    if (mime or '').lower() == 'message/rfc822' or (name or '').lower().endswith('.eml'):
+        return bool(HEADER.search(data[:65536]))
+    head = data[:65536].replace(b'\r\n', b'\n').split(b'\n\n', 1)[0]
+    names = {m.group(0)[:-1].lower() for m in HEADER.finditer(head)}
+    return len(names & {b'from', b'date', b'subject', b'to'}) >= 3 and bool(names & {b'mime-version', b'content-type', b'received', b'message-id'})
+
+
+def html_text(markup):
+    t = re.sub(r'(?is)<(script|style|head)[^>]*>.*?</\1>', ' ', markup)
+    t = re.sub(r'(?i)<br\s*/?>|</(p|div|tr|li|h[1-6]|blockquote)>', '\n', t)
+    t = re.sub(r'(?i)<li[^>]*>', '- ', t)
+    t = re.sub(r'(?s)<[^>]+>', '', t)
+    t = html.unescape(t)
+    t = re.sub(r'[ \t\u00a0]+', ' ', t)
+    return re.sub(r'\n\s*\n\s*\n+', '\n\n', t).strip()
+
+
+def email_text(data, depth=0):
+    """The readable text of a saved email: headers, the body (plain text preferred, else HTML converted), attached and
+    forwarded emails in full, Word and text attachments inline, other attachments listed by name, type and size."""
+    msg = email.message_from_bytes(data, policy=email.policy.default)
+    return render_message(msg, depth)
+
+
+def render_message(msg, depth=0):
+    out = []
+    for h in ('From', 'To', 'Cc', 'Date', 'Subject'):
+        v = msg.get(h)
+        if v:
+            out.append('%s: %s' % (h, str(v).strip()))
+    body, listed = '', []
+    plain = msg.get_body(preferencelist=('plain',)) if msg.is_multipart() or msg.get_content_type() == 'text/plain' else None
+    rich = None if plain else msg.get_body(preferencelist=('html',))
+    try:
+        if plain is not None:
+            body = plain.get_content()
+        elif rich is not None:
+            body = html_text(rich.get_content())
+        elif not msg.is_multipart() and msg.get_content_maintype() == 'text':
+            body = msg.get_content()
+    except (LookupError, ValueError, AttributeError):
+        body = ''
+    out += ['', (body or '(no text body)').strip()]
+    if msg.is_multipart():
+        for part in msg.iter_attachments():
+            ctype = part.get_content_type()
+            fname = part.get_filename() or ''
+            if ctype == 'message/rfc822' and depth < 3:
+                inner = part.get_payload(0) if part.is_multipart() else None
+                if inner is not None:
+                    out += ['', '----- Attached message%s -----' % ((' ' + fname) if fname else ''), render_message(inner, depth + 1)]
+                    continue
+            try:
+                payload = part.get_payload(decode=True) or b''
+            except Exception:
+                payload = b''
+            label = '%s (%s, %d KB)' % (fname or '(unnamed)', ctype, max(1, len(payload) // 1024))
+            if ctype == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' or fname.lower().endswith('.docx'):
+                try:
+                    out += ['', '----- Attachment %s -----' % label, docx_text(payload)]
+                    continue
+                except Exception:
+                    pass
+            if part.get_content_maintype() == 'text' and ctype != 'text/html' and len(payload) <= 200000:
+                out += ['', '----- Attachment %s -----' % label, payload.decode(part.get_content_charset() or 'utf-8', 'replace')]
+                continue
+            listed.append(label)
+    if listed:
+        out += ['', 'Other attachments (not read here; a PDF can be read when the email is opened from Gmail, or saved to Drive on its own): ' + '; '.join(listed)]
+    return '\n'.join(out)
 
 
 def sniff(data):
@@ -109,13 +192,18 @@ class DocReader:
             if kind == 'text':
                 record = self.extract.store_text(key, data.decode('utf-8', 'replace'), 'google_export_text')
             else:
-                found = sniff(data)
-                if found == 'text':
+                found = 'email' if looks_like_email(data, meta['name'], meta['mime']) else sniff(data)
+                if found == 'email':
+                    record = self.extract.store_text(key, email_text(data), 'original_email')
+                elif found == 'text':
                     record = self.extract.store_text(key, data.decode('utf-8'), 'original_text')
                 elif found in ('pdf', 'docx'):
                     record = self.extract.start(key, found, data)
+                elif data[:8] == OLE:
+                    return {'status': 'file_not_extractable', 'name': meta['name'], 'mime': meta['mime'],
+                            'note': 'This is an Outlook .msg file, which cannot be read here. Forward the email to the connected Gmail or iCloud address, or save it as .eml (Outlook: File › Save As › .eml, or drag it to the desktop on a Mac).'}
                 else:
                     return {'status': 'file_not_extractable', 'name': meta['name'], 'mime': meta['mime'],
-                            'note': 'This file type cannot be read as text here (only Google Docs/Sheets/Slides, PDF including scans, Word .docx and plain text).'}
+                            'note': 'This file type cannot be read as text here (only Google Docs/Sheets/Slides, PDF including scans, Word .docx, saved emails .eml and plain text).'}
             return {'cached': True, **self.result(key, record, args, meta)}
         raise ValueError('Unknown document operation.')

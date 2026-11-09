@@ -67,6 +67,40 @@ class Tests(unittest.TestCase):
         r = self.call('doc_ingest', key='gmail:18c2a:att0003', kind='auto', file=self.drop(b'\x89PNG\r\n\x1a\n\x00\x00'), name='photo.png')
         self.assertEqual(r['status'], 'file_not_extractable')
 
+    def test_saved_email_is_decoded_not_read_as_raw_mime(self):
+        """Nov 9: an .eml in Drive came back with its body still base64. Saved emails are parsed: headers, the decoded body,
+        a forwarded message in full, a Word attachment inline, other attachments listed."""
+        from email.message import EmailMessage
+        inner = EmailMessage()
+        inner['From'] = 'Program Office <office@example.org>'; inner['To'] = 'Resident <resident@example.org>'
+        inner['Date'] = 'Mon, 02 Nov 2026 09:15:00 -0500'; inner['Subject'] = 'Committee recommendations'
+        inner.set_content('The committee recommends extending the review period by one month.\nPlease confirm receipt.')
+        outer = EmailMessage()
+        outer['From'] = 'Resident <resident@example.org>'; outer['To'] = 'Counsel <counsel@example.com>'
+        outer['Date'] = 'Mon, 02 Nov 2026 10:00:00 -0500'; outer['Subject'] = 'Fwd: Committee recommendations'
+        outer.set_content('See below. Café notes: ñ — “quoted”.', charset='utf-8', cte='base64')
+        outer.add_alternative('<p>See <b>below</b>.</p>', subtype='html')
+        outer.add_attachment(inner)
+        outer.add_attachment(docx('Rebuttal draft\nPoint one'), maintype='application', subtype='vnd.openxmlformats-officedocument.wordprocessingml.document', filename='rebuttal.docx')
+        outer.add_attachment(b'%PDF-1.4 fake', maintype='application', subtype='pdf', filename='notice.pdf')
+        raw = outer.as_bytes()
+        self.assertIn(b'Content-Transfer-Encoding: base64', raw)
+        self.assertTrue(docread.looks_like_email(raw)); self.assertFalse(docread.looks_like_email(b'From the desk of the editor:\nhello'))
+        r = self.call('doc_ingest', key='drive:1EmlFromDrive01@v1', kind='auto', file=self.drop(raw), name='Re CCC Recommendations.eml', mime='message/rfc822')
+        self.assertEqual(r['extraction'], 'original_email'); c = r['content']
+        self.assertIn('Subject: Fwd: Committee recommendations', c); self.assertIn('Café notes: ñ — “quoted”.', c)
+        self.assertNotIn('Q2Fm', c, 'no base64 left in the text')
+        self.assertIn('----- Attached message', c); self.assertIn('From: Program Office <office@example.org>', c)
+        self.assertIn('extending the review period by one month', c)
+        self.assertIn('----- Attachment rebuttal.docx', c); self.assertIn('Point one', c)
+        self.assertIn('Other attachments', c); self.assertIn('notice.pdf (application/pdf', c)
+        html_only = EmailMessage(); html_only['From'] = 'a@example.org'; html_only['To'] = 'b@example.org'; html_only['Date'] = 'Mon, 02 Nov 2026 10:00:00 -0500'
+        html_only['Subject'] = 'HTML only'; html_only.set_content('<html><style>p{}</style><p>Line&nbsp;one</p><p>Line two &amp; more</p></html>', subtype='html')
+        r = self.call('doc_ingest', key='drive:1EmlHtmlOnly01@v1', kind='auto', file=self.drop(html_only.as_bytes()), name='x.eml')
+        self.assertIn('Line one\nLine two & more', r['content']); self.assertNotIn('<p>', r['content'])
+        r = self.call('doc_ingest', key='drive:1OutlookMsg001@v1', kind='auto', file=self.drop(docread.OLE + b'\x00' * 100), name='GME.msg')
+        self.assertEqual(r['status'], 'file_not_extractable'); self.assertIn('Outlook .msg', r['note'])
+
     def test_pdf_paths(self):
         orig = docread.Extractor.start
         calls = []

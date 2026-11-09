@@ -2,6 +2,10 @@
 
 All notable changes to PROCURATOR. The project was built as one owner's assistant from October 2026 and opened as a public tree at 0.30.0; earlier entries are condensed from the internal release notes.
 
+## 0.32.1 — 2026-11-09 — saved emails are readable
+
+- **Saved emails (.eml) in Drive or attachments are decoded.** They were read as plain text, so a base64 or quoted-printable body came through unreadable. The document reader now parses them: headers, the body (plain text, or HTML converted), forwarded/attached emails in full, Word and text attachments inline, other attachments listed. Outlook `.msg` files get a clear note (forward the email or save it as .eml).
+
 ## 0.32.0 — 2026-11-09 — verified pull requests, the spec interview, long-horizon builds (PROCURATOR-X)
 
 - **Every PR arrives verified.** The coding agent writes one executable check per acceptance item (`.procurator/checks/NN-*.sh`); the builder runs them and the repo's tests, then a **second agent reviews the diff read-only** (`review: auto` = the other installed agent; `claude`, `codex` or `off`; `review_model`) and answers approve / request changes with issues. Anything that fails goes back to the implementer (`verify_rounds`, default 2) before the pull request opens. The PR body carries a Verification section: acceptance table, tests, the review and, when the repo has a `preview` command configured on the builder, **screenshots** of the changed app captured with headless Chrome into `.procurator/evidence/`. BUILD READY, `build_status` and the dashboard show the same.
