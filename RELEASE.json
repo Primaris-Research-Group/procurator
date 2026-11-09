@@ -1,16 +1,16 @@
 {
   "product": "PROCURATOR",
-  "version": "0.32.2",
+  "version": "0.32.3",
   "channel": "public-preview",
   "editions": ["standard", "x"],
   "openclaw_image": "pinned in .env (OPENCLAW_IMAGE) from compose.upstream.yaml, version 2026.10.9",
   "api_version": 1,
   "manifest_version": 2,
   "components": {
-    "web-plugin": "0.32.2",
+    "web-plugin": "0.32.3",
     "mail-plugin": "0.8.0",
     "voice-plugin": "0.8.3",
-    "web-broker": "0.32.2",
+    "web-broker": "0.32.3",
     "mail-broker": "0.8.0",
     "builder-worker": "see integrations/builder/worker.py",
     "browser-worker": "see integrations/browser-worker/runner.cjs"

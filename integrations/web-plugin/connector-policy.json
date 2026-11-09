@@ -683,6 +683,16 @@
    "connector": "npi-registry",
    "risk": "read"
   },
+  "owner_file_read": {
+   "class": "general",
+   "connector": "documents",
+   "risk": "read"
+  },
+  "owner_files_recent": {
+   "class": "general",
+   "connector": "documents",
+   "risk": "read"
+  },
   "owner_preference_forget": {
    "class": "general",
    "connector": "assistant-core",

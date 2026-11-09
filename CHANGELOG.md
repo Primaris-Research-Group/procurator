@@ -2,6 +2,11 @@
 
 All notable changes to PROCURATOR. The project was built as one owner's assistant from October 2026 and opened as a public tree at 0.30.0; earlier entries are condensed from the internal release notes.
 
+## 0.32.3 — 2026-11-09 — files sent in Telegram are read in full
+
+- **Documents the owner sends in Telegram are read whole.** The gateway only showed the model a preview of a sent file (a saved email came through as raw encoded MIME) and the messaging tool profile has no file tools, so the assistant could not open three emails sent as .eml files. New read-only tools: `owner_file_read` reads a sent file by its path or by part of its name, with the same extraction as Drive and Gmail (saved emails decoded with their forwarded messages, Word and text attachments, PDF including scans by OCR, Word, text/CSV), in pages with a sha256; `owner_files_recent` lists the files on the server, so the assistant checks before saying a file did not arrive. A hook steers messages that carry or mention files to the tool.
+- **Saved emails:** PDFs attached to an .eml are read inline (text layer); Microsoft rights-protected (message.rpmsg / Office 365 encrypted) and S/MIME or PGP emails now say plainly that the content is locked to the recipient and what the owner can send instead; an old-format .doc/.xls/.ppt gets its own note.
+
 ## 0.32.2 — 2026-11-09 — ChatGPT chats read whole, in order
 
 - **Chats are read once, whole, and paged from that copy.** `read_chat` used to reopen the chat for every page; ChatGPT loads long chats lazily, so each page came from a different rendering and the agent saw overlapping or missing turns ("the reader returned overlapping portions"). The reader now takes the conversation from the same data the ChatGPT page loads for itself (no extra requests, nothing typed), keeps every turn of the current branch in order with its date, and the server keeps that copy for an hour: every page has the same sha256 and follows on exactly. `refresh: true` re-reads a chat the owner has added to. When the conversation data is unavailable, the page is scrolled until the turn count stops changing, and an incomplete read is flagged instead of presented as whole.

@@ -4,6 +4,7 @@ import os
 import tempfile
 import unittest
 import zipfile
+import shutil
 from pathlib import Path
 
 from broker import Broker
@@ -23,6 +24,21 @@ def docx(text):
         z.writestr('word/document.xml', '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
                    + ''.join('<w:p><w:r><w:t>%s</w:t></w:r></w:p>' % line for line in text.split('\n')) + '</w:body></w:document>')
     return buf.getvalue()
+
+
+def text_pdf(lines):
+    """A minimal one-page PDF with a text layer (no PDF library needed)."""
+    stream = 'BT /F1 12 Tf 72 720 Td ' + ' '.join('(%s) Tj 0 -16 Td' % l.replace('(', '').replace(')', '') for l in lines) + ' ET'
+    objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+            '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+            '<< /Length %d >>\nstream\n%s\nendstream' % (len(stream), stream), '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>']
+    out, offs = '%PDF-1.4\n', []
+    for i, o in enumerate(objs, 1):
+        offs.append(len(out)); out += '%d 0 obj\n%s\nendobj\n' % (i, o)
+    xref = len(out)
+    out += 'xref\n0 %d\n0000000000 65535 f \n' % (len(objs) + 1) + ''.join('%010d 00000 n \n' % o for o in offs)
+    out += 'trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n' % (len(objs) + 1, xref)
+    return out.encode('latin-1')
 
 
 class Tests(unittest.TestCase):
@@ -100,6 +116,39 @@ class Tests(unittest.TestCase):
         self.assertIn('Line one\nLine two & more', r['content']); self.assertNotIn('<p>', r['content'])
         r = self.call('doc_ingest', key='drive:1OutlookMsg001@v1', kind='auto', file=self.drop(docread.OLE + b'\x00' * 100), name='GME.msg')
         self.assertEqual(r['status'], 'file_not_extractable'); self.assertIn('Outlook .msg', r['note'])
+
+    def test_files_the_owner_sent_protected_mail_and_pdf_attachments(self):
+        """0.32.3 (Nov 9): three GME emails sent in Telegram. Files the owner sends have their own key space; a Microsoft
+        rights-protected email says plainly that it is locked and what the owner can send instead; a PDF attached to a saved
+        email is read inline; an old .doc gets its own note."""
+        from email.message import EmailMessage
+        wrapper = EmailMessage()
+        wrapper['From'] = 'Program Office <office@example.org>'; wrapper['To'] = 'Resident <resident@example.org>'
+        wrapper['Date'] = 'Mon, 02 Nov 2026 09:15:00 -0500'; wrapper['Subject'] = 'Workflow Request'
+        wrapper.set_content('<p>Program Office (office@example.org) has sent you a protected message.</p><p>Read the message</p>', subtype='html')
+        wrapper.add_attachment(b'\x76\xe8\x04\x60' * 200, maintype='application', subtype='octet-stream', filename='message.rpmsg')
+        r = self.call('doc_ingest', key='file:' + 'a' * 40, kind='auto', file=self.drop(wrapper.as_bytes()), name='Workflow Request.eml', mime='message/rfc822')
+        self.assertEqual(r['source'], 'file'); self.assertEqual(r['extraction'], 'original_email')
+        self.assertIn('PROTECTED MESSAGE', r['content']); self.assertIn('open it in Outlook', r['content'])
+        self.assertIn('Subject: Workflow Request', r['content'])
+        smime = EmailMessage(); smime['From'] = 'a@example.org'; smime['To'] = 'b@example.org'; smime['Date'] = 'Mon, 02 Nov 2026 10:00:00 -0500'
+        smime['Subject'] = 'Sealed'; smime.set_content('x'); smime.add_attachment(b'0' * 300, maintype='application', subtype='pkcs7-mime', filename='smime.p7m')
+        r = self.call('doc_ingest', key='file:' + 'b' * 40, kind='auto', file=self.drop(smime.as_bytes()), name='Sealed.eml')
+        self.assertIn('ENCRYPTED MESSAGE', r['content'])
+        plain = EmailMessage(); plain['From'] = 'a@example.org'; plain['To'] = 'b@example.org'; plain['Date'] = 'Mon, 02 Nov 2026 10:00:00 -0500'
+        plain['Subject'] = 'Rotation Schedule Updates'; plain.set_content('Block 7 changes to ICU make-up time.')
+        r = self.call('doc_ingest', key='file:' + 'c' * 40, kind='auto', file=self.drop(plain.as_bytes()), name='Rotation Schedule.eml')
+        self.assertNotIn('PROTECTED', r['content']); self.assertIn('Block 7 changes', r['content'])
+        r = self.call('doc_ingest', key='file:' + 'd' * 40, kind='auto', file=self.drop(docread.OLE + b'\x00' * 100), name='Old letter.doc')
+        self.assertEqual(r['status'], 'file_not_extractable'); self.assertIn('.docx or PDF', r['note'])
+        if not shutil.which('pdftotext'):
+            self.skipTest('pdftotext not installed')
+        letter = EmailMessage(); letter['From'] = 'a@example.org'; letter['To'] = 'b@example.org'; letter['Date'] = 'Mon, 02 Nov 2026 10:00:00 -0500'
+        letter['Subject'] = 'RE: CCC Recommendations'; letter.set_content('Letter attached.')
+        letter.add_attachment(text_pdf(['Clinical Competency Committee', 'Recommendation: remediation plan for block 7']), maintype='application', subtype='pdf', filename='CCC letter.pdf')
+        r = self.call('doc_ingest', key='file:' + 'e' * 40, kind='auto', file=self.drop(letter.as_bytes()), name='RE CCC Recommendations.eml')
+        self.assertIn('----- Attachment CCC letter.pdf', r['content']); self.assertIn('remediation plan for block 7', r['content'])
+        self.assertNotIn('Other attachments', r['content'])
 
     def test_pdf_paths(self):
         orig = docread.Extractor.start

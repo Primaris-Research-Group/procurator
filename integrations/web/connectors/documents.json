@@ -3,7 +3,7 @@
  "id": "documents",
  "version": "1.0.0",
  "title": "Whole documents and project files",
- "description": "Drive files, Gmail attachments and ChatGPT/Claude project files read in pages.",
+ "description": "Drive files, Gmail attachments, files the owner sends in Telegram and ChatGPT/Claude project files read in pages.",
  "class": "general",
  "source": "core",
  "plugin": "procurator-web",
@@ -22,6 +22,12 @@
    "risk": "read"
   },
   "project_sources": {
+   "risk": "read"
+  },
+  "owner_file_read": {
+   "risk": "read"
+  },
+  "owner_files_recent": {
    "risk": "read"
   }
  },

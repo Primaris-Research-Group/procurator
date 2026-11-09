@@ -7,7 +7,7 @@ const regCaps=registerCapabilities;
 test('the card names every tool family the Nov 4 summary forgot, and what is not available',()=>{
  for(const want of ['drive_search','docs_get','workspace_create_document','calendar_create_event','tasks_add','mail_request_review','project_sources','news_headlines','market_quotes','web_site_logins','phone_read_call','owner_profile','/spendcap'])assert.ok(CARD.includes(want),want);
  assert.match(CARD,/NOT available[^]*locating people/);assert.match(CARD,/places_search/);assert.match(CARD,/\/healthread/);assert.match(CARD,/bank or card access beyond read-only balances/);assert.match(CARD,/web_look/);assert.match(CARD,/flight_search/);
- assert.ok(CARD.length<7300,CARD.length);   // 0.30.0: neutral owner wording ("the owner" for "he") and the welcome line; 0.29.0: +Apple account line; 0.28.0: +library and home line; 0.27.0: +public posts and events line (0.25.0: +lookups, texts, MCP and health safeguards)
+ assert.ok(CARD.length<7400,CARD.length);   // 0.32.3: +owner_file_read; 0.30.0: neutral owner wording ("the owner" for "he") and the welcome line; 0.29.0: +Apple account line; 0.28.0: +library and home line; 0.27.0: +public posts and events line (0.25.0: +lookups, texts, MCP and health safeguards)
  assert.ok(CARD.includes('build_prepare')&&CARD.includes('/buildapprove'));
 });
 test('live status says what is ready and the exact one-time step for what is not',()=>{

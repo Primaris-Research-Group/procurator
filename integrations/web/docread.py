@@ -17,13 +17,17 @@ import zipfile
 import io
 from pathlib import Path
 
-from extract import Extractor, docx_text, page as text_page, MAX_BYTES
+import shutil
+import tempfile
 
-KEY = re.compile(r'^(drive|gmail):[A-Za-z0-9_.:@-]{6,240}$')
+from extract import Extractor, docx_text, page as text_page, MAX_BYTES, sandboxed
+
+KEY = re.compile(r'^(drive|gmail|file):[A-Za-z0-9_.:@-]{6,240}$')   # file: a document the owner sent in Telegram (0.32.3)
 FILE = re.compile(r'^[a-f0-9]{32}\.bin$')
 KINDS = ('text', 'auto')
 NOTES = {'google_export_text': 'Full text exported from Google (all tabs for Docs).', 'original_pdf_text': 'Exact text layer of the original PDF.',
          'original_docx': 'Text of the original Word file.', 'original_text': 'The original plain-text file.',
+         'original_email': 'The saved email, decoded: headers, body, forwarded emails and readable attachments.',
          'ocr': 'Recognized from page images by OCR: check names, dates and numbers against the document before relying on them.'}
 
 
@@ -59,6 +63,28 @@ def email_text(data, depth=0):
     return render_message(msg, depth)
 
 
+PROTECTED_BODY = re.compile(r'outlook\.office365\.com/Encryption|Microsoft Purview Message Encryption|Office 365 Message Encryption|'
+                            r'(?:sent you|received) (?:a|an) (?:protected|encrypted) message|To view your message, (?:sign in|open)|message\.rpmsg', re.I)
+
+
+def protection(msg, body):
+    """Why the content of this email is not readable here, or None. Microsoft rights-protected mail carries its content in
+    message.rpmsg (or behind an Office 365 link) and only the recipient's signed-in Outlook can open it (Nov 9: "Workflow Request"
+    showed only the wrapper); S/MIME and PGP mail is encrypted to the recipient's key."""
+    parts = list(msg.walk()) if msg.is_multipart() else [msg]
+    names = ' '.join((p.get_filename() or '') + ' ' + p.get_content_type() for p in parts).lower()
+    cls = str(msg.get('Content-Class') or '').lower()
+    if 'rpmsg' in names or 'rpmsg' in cls or PROTECTED_BODY.search(body or ''):
+        return ('PROTECTED MESSAGE: the sender encrypted this email with Microsoft message encryption, so the text above is only the '
+                'wrapper and the real content is locked to the recipient\'s Microsoft account. It cannot be decrypted here. The owner can '
+                'open it in Outlook (desktop, web or phone, signed in as the recipient) and then copy the text, take screenshots, print it to '
+                'PDF, or forward it if the sender allowed forwarding, and send that to you.')
+    if 'application/pkcs7-mime' in names or 'application/x-pkcs7-mime' in names or 'application/pgp-encrypted' in names:
+        return ('ENCRYPTED MESSAGE (S/MIME or PGP): only the recipient\'s mail app with their key can open it. Ask the owner to open it '
+                'there and send you the text, screenshots or a PDF.')
+    return None
+
+
 def render_message(msg, depth=0):
     out = []
     for h in ('From', 'To', 'Cc', 'Date', 'Subject'):
@@ -77,6 +103,9 @@ def render_message(msg, depth=0):
             body = msg.get_content()
     except (LookupError, ValueError, AttributeError):
         body = ''
+    locked = protection(msg, body)
+    if locked:
+        out += ['', locked]
     out += ['', (body or '(no text body)').strip()]
     if msg.is_multipart():
         for part in msg.iter_attachments():
@@ -92,6 +121,13 @@ def render_message(msg, depth=0):
             except Exception:
                 payload = b''
             label = '%s (%s, %d KB)' % (fname or '(unnamed)', ctype, max(1, len(payload) // 1024))
+            if fname.lower().endswith('.pdf') or ctype == 'application/pdf':
+                text = pdf_text(payload)
+                if text:
+                    out += ['', '----- Attachment %s -----' % label, text]
+                    continue
+                listed.append(label + ' [scanned or unreadable PDF: the owner can send it to you on its own, which reads scans by OCR]')
+                continue
             if ctype == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' or fname.lower().endswith('.docx'):
                 try:
                     out += ['', '----- Attachment %s -----' % label, docx_text(payload)]
@@ -103,8 +139,28 @@ def render_message(msg, depth=0):
                 continue
             listed.append(label)
     if listed:
-        out += ['', 'Other attachments (not read here; a PDF can be read when the email is opened from Gmail, or saved to Drive on its own): ' + '; '.join(listed)]
+        out += ['', 'Other attachments (not read here; the owner can send one to you on its own): ' + '; '.join(listed)]
     return '\n'.join(out)
+
+
+def pdf_text(data, limit=10 * 1024 * 1024):
+    """Text layer of a PDF attached to a saved email ('' for scans, oversize files or when pdftotext is missing)."""
+    if not data.startswith(b'%PDF-') or len(data) > limit or not shutil.which('pdftotext'):
+        return ''
+    work = tempfile.mkdtemp(prefix='mailpdf-')
+    try:
+        os.chmod(work, 0o755)
+        pdf = os.path.join(work, 'in.pdf')
+        with open(pdf, 'wb') as f:
+            f.write(data)
+        os.chmod(pdf, 0o644)
+        text = sandboxed(['pdftotext', '-layout', '-enc', 'UTF-8', pdf, '-'], 30).stdout.decode('utf-8', 'replace')
+    except Exception:
+        return ''
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    text = re.sub(r'[ \t]+\n', '\n', text.replace('\f', '\n\n')).strip()
+    return text if len(re.sub(r'\s', '', text)) >= 50 else ''
 
 
 def sniff(data):
@@ -199,6 +255,9 @@ class DocReader:
                     record = self.extract.store_text(key, data.decode('utf-8'), 'original_text')
                 elif found in ('pdf', 'docx'):
                     record = self.extract.start(key, found, data)
+                elif data[:8] == OLE and not (meta['name'] or '').lower().endswith('.msg') and (meta['name'] or '').lower().endswith(('.doc', '.xls', '.ppt')):
+                    return {'status': 'file_not_extractable', 'name': meta['name'], 'mime': meta['mime'],
+                            'note': 'This is an old-format Office file (.doc/.xls/.ppt), which cannot be read here. Ask the owner to save it as .docx or PDF (File › Save As) and send that.'}
                 elif data[:8] == OLE:
                     return {'status': 'file_not_extractable', 'name': meta['name'], 'mime': meta['mime'],
                             'note': 'This is an Outlook .msg file, which cannot be read here. Forward the email to the connected Gmail or iCloud address, or save it as .eml (Outlook: File › Save As › .eml, or drag it to the desktop on a Mac).'}
