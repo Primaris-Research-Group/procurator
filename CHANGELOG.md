@@ -2,6 +2,13 @@
 
 All notable changes to PROCURATOR. The project was built as one owner's assistant from October 2026 and opened as a public tree at 0.30.0; earlier entries are condensed from the internal release notes.
 
+## 0.32.0 — 2026-11-09 — verified pull requests, the spec interview, long-horizon builds (PROCURATOR-X)
+
+- **Every PR arrives verified.** The coding agent writes one executable check per acceptance item (`.procurator/checks/NN-*.sh`); the builder runs them and the repo's tests, then a **second agent reviews the diff read-only** (`review: auto` = the other installed agent; `claude`, `codex` or `off`; `review_model`) and answers approve / request changes with issues. Anything that fails goes back to the implementer (`verify_rounds`, default 2) before the pull request opens. The PR body carries a Verification section: acceptance table, tests, the review and, when the repo has a `preview` command configured on the builder, **screenshots** of the changed app captured with headless Chrome into `.procurator/evidence/`. BUILD READY, `build_status` and the dashboard show the same.
+- **The spec interview.** Coding packets in the Packet Composer follow a five-question interview (repo and change; paths and what not to touch; checkable acceptance items; model, reviewer and time limit; what the agent must know) and render a **BUILD.md**; vague acceptance items are flagged. Saving writes the file to the build store and `/buildfrom SLUG` sends the BUILD REVIEW. Template: `config/BUILD.example.md`.
+- **Long-horizon builds.** Builders poll the pull requests they opened (`gh pr view`, every 5 minutes for three weeks) and report merges; a packet step can wait with `awaiting merge:<build id>` and becomes eligible when the owner merges, so a feature can be delivered as a chain of reviewed PRs over days. Telegram says when a build's PR was merged or closed.
+- Builder worker 1.5.0 (`checks`, `review`, `verify_rounds`, `check_timeout_s`, `tools.chrome`, per-repo `preview`), relay 1.5.0 (`verification`, `pr_state`, `merged_at`, builder `models`/`live`).
+
 ## 0.31.0 — 2026-11-09 — live builds (PROCURATOR-X)
 
 - **BUILD.md packets.** `build_prepare` accepts the owner's Markdown packet (`markdown=`): front matter for repo, base, agent, model, builder, paths and time limit; `# title`, `## Goal`, `## Acceptance` bullets. Template in `config/BUILD.example.md`; guide in `docs/builds.md`.

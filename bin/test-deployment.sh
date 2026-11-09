@@ -10,7 +10,7 @@
 # The hands-on half (Telegram approvals, sign-ins, real sites) is the doc "PROCURATOR 0.19.0 — Hands-on test plan".
 set -euo pipefail
 HOST="${PROCURATOR_HOST:?set PROCURATOR_HOST to root@<your box>}"
-EXPECT=0.31.0
+EXPECT=0.32.0
 cd "$(dirname "$0")/.."
 MODE=full; VISION=0; ONLY=ABCDE
 while [[ $# -gt 0 ]]; do

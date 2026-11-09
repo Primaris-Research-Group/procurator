@@ -365,6 +365,25 @@ class OrchestratorTests(unittest.TestCase):
         s2 = self.m.call('mission_get', {'mission': 'sb'})['threads'][0]['steps'][1]
         self.assertEqual(s2['status'], 'pending'); self.assertNotIn('awaiting', s2)
 
+    def test_a_build_step_can_wait_for_the_previous_builds_merge(self):
+        """0.32.0 long-horizon builds: awaiting merge:<build id> blocks the step until the build store says the PR was merged."""
+        self.setUp2()
+        store = Path(self.tmp.name) / 'build-store'; (store / 'reports').mkdir(parents=True)
+        self.m.build_dir = store
+        self.t(step_id='s1', status='done', evidence=['PR https://github.com/example/repo/pull/5'])
+        bid = 'a1b2c3d4e5f60718'
+        r = self.t(step_id='s2', status='waiting_for_owner', awaiting='merge:' + bid)
+        self.assertIn('pull request of build %s to be merged' % bid, r['shown_to_owner'])
+        nu = self.m.call('mission_next', {'mission': 'sb'})
+        self.assertEqual(nu['eligible'], []); self.assertEqual(nu['blocked'][0]['waiting_for'], ['merge:' + bid])
+        (store / 'reports' / (bid + '.json')).write_text(json.dumps({'id': bid, 'status': 'done', 'pr_state': 'OPEN'}))
+        self.assertEqual(self.m.call('mission_next', {'mission': 'sb'})['eligible'], [], 'open is not merged')
+        (store / 'reports' / (bid + '.json')).write_text(json.dumps({'id': bid, 'status': 'done', 'pr_state': 'MERGED', 'merged_at': '2026-11-09T01:00:00Z'}))
+        # the step is still marked waiting_for_owner by status; a merge releases it on the next look
+        self.t(step_id='s2', status='pending', awaiting='merge:' + bid)
+        nu = self.m.call('mission_next', {'mission': 'sb'})
+        self.assertEqual(nu['eligible'][0]['step'], 's2'); self.assertIn('was MERGED', nu['eligible'][0]['instruction'])
+
     def test_wait_steps_on_watches_and_dates(self):
         self.setUp2()
         for sid in ('s1', 's2'):

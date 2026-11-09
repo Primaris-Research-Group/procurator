@@ -164,11 +164,40 @@ def hello(name, data):
                      if isinstance(r, str) and REPO.match(r) and isinstance(b, str) and re.match(r'^[A-Za-z0-9._/-]{1,100}$', b)} if isinstance(defaults.get('branches'), dict) else {},
         'busy': busy,
         'vitals': vitals_of(data.get('vitals')),
+        # live builds (1.4.0) and verified PRs (1.5.0): what this builder offers, for the plugin's review text and checks
+        'live': data.get('live') is not False,
+        'models': {a: [m for m in (models.get(a) or []) if isinstance(m, str) and MODEL.match(m)][:20] for a in ('claude', 'codex')}
+                  if isinstance((models := data.get('models')), dict) else {'claude': [], 'codex': []},
+        'defaults': {'models': {a: m for a, m in ((defaults.get('models') or {}).items() if isinstance(defaults.get('models'), dict) else [])
+                                if a in ('claude', 'codex') and isinstance(m, str) and MODEL.match(m)}},
     }
     write_json(os.path.join(STATE, 'builders', name + '.json'), info)
+    record_prs(name, data.get('prs'))
     cancel = sorted(i for i in os.listdir(os.path.join(STATE, 'cancel')) if ID.match(i)
                     and claimed_by(i) == name)
     return {'ok': True, 'cancel': cancel, 'time': info['seen_at']}
+
+
+def record_prs(name, prs):
+    """Long-horizon packets (1.5.0): the builder reports the state of pull requests it opened ({build id: {state, merged_at}}); the
+    report of each build THIS builder claimed gets pr_state / merged_at, which the plugin and the packet runner read."""
+    if not isinstance(prs, dict):
+        return
+    for bid, p in list(prs.items())[:50]:
+        if not (isinstance(bid, str) and ID.match(bid) and isinstance(p, dict)) or claimed_by(bid) != name:
+            continue
+        state = p.get('state')
+        if state not in ('OPEN', 'MERGED', 'CLOSED'):
+            continue
+        path = os.path.join(STATE, 'reports', bid + '.json')
+        cur = read_json(path, {}) or {}
+        if not cur or cur.get('status') != 'done':
+            continue
+        merged = p.get('merged_at') if isinstance(p.get('merged_at'), str) and len(p['merged_at']) <= 40 else None
+        if cur.get('pr_state') == state and cur.get('merged_at') == merged:
+            continue
+        cur['pr_state'], cur['merged_at'], cur['pr_checked_at'] = state, merged, now_ms()
+        write_json(path, cur)
 
 
 def claimed_by(build_id):
@@ -277,6 +306,31 @@ def report(name, build_id, data):
         v = integer(data.get(key), key)
         if v is not None:
             out[key] = v
+    ver = data.get('verification')
+    if ver is not None:
+        if not isinstance(ver, dict):
+            raise RelayError('verification must be an object')
+        checks = []
+        for c in (ver.get('checks') or [])[:10]:
+            if not isinstance(c, dict) or c.get('status') not in ('passed', 'failed', 'timed_out', 'missing'):
+                raise RelayError('verification.checks invalid')
+            checks.append({'n': integer(c.get('n'), 'check.n', 1, 10) or 0, 'text': text(c.get('text'), 300, 'check.text') or '', 'status': c['status'],
+                           'output': text(c.get('output'), 600, 'check.output') or ''})
+        review = None
+        rv = ver.get('review')
+        if isinstance(rv, dict):
+            if rv.get('verdict') not in ('approve', 'request_changes', 'unclear', 'unavailable'):
+                raise RelayError('verification.review.verdict invalid')
+            issues = []
+            for i in (rv.get('issues') or [])[:12]:
+                if isinstance(i, dict):
+                    sev = i.get('severity') if i.get('severity') in ('high', 'medium', 'low') else 'medium'
+                    issues.append({'severity': sev, 'file': text(i.get('file'), 200, 'issue.file') or '', 'text': text(i.get('text'), 500, 'issue.text') or ''})
+            review = {'verdict': rv['verdict'], 'agent': text(rv.get('agent'), 20, 'review.agent') or '', 'model': text(rv.get('model'), 64, 'review.model') or '',
+                      'summary': text(rv.get('summary'), 1500, 'review.summary') or '', 'issues': issues}
+        out['verification'] = {'checks': checks, 'review': review, 'rounds': integer(ver.get('rounds'), 'rounds', 0, 20) or 0,
+                               'unresolved': text(ver.get('unresolved'), 20, 'unresolved'), 'screenshots': integer(ver.get('screenshots'), 'screenshots', 0, 20) or 0,
+                               'screenshot_note': text(ver.get('screenshot_note'), 300, 'screenshot_note') or '', 'passed': bool(ver.get('passed'))}
     if data.get('cost_usd') is not None:
         c = data['cost_usd']
         if isinstance(c, bool) or not isinstance(c, (int, float)) or not 0 <= c < 10000:

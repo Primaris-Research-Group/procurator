@@ -253,7 +253,7 @@ class Broker:
         self.tasks=Tasks(self,url,text,digest)
         self.projects=ProjectSources(self);self.url_validator=url;self.text_validator=text;self.sites=SiteLogins(self)
         from missions import Missions
-        self.missions=Missions(str(Path(path).with_name('missions.sqlite3')),self.provider)
+        self.missions=Missions(str(Path(path).with_name('missions.sqlite3')),self.provider,build_dir=BASE/'state'/'procurator-build')
         from activity import Activity
         self.activity=Activity(str(Path(path).with_name('activity.sqlite3')))
         # 0.20.0: conversation memory (digests before the nightly reset, open items, lessons from workflows).
@@ -329,7 +329,7 @@ class Broker:
         main_model=lambda:self.dashboard.model_info().get('primary') if getattr(self,'dashboard',None) else None
         self.composer=Composer(str(Path(path).with_name('composer.sqlite3')),missions=self.missions,key_reader=anthropic_key,openai_reader=openai_key,
             catalog=Catalog(logins=lambda:self.sites.call('site_list',{},False)['sites'],builders=dash_builders,health=self.health.status,lanes=lambda:self.call('lane_status',{})),
-            checks=lambda:(self.missions.checks() if self.missions.checks else {}),settings=self.model_settings,main_model=main_model)
+            checks=lambda:(self.missions.checks() if self.missions.checks else {}),settings=self.model_settings,main_model=main_model,build_dir=BASE/'state'/'procurator-build')
         with self.db() as db:db.execute('CREATE TABLE IF NOT EXISTS watch_tokens(token_hash TEXT PRIMARY KEY,session_id TEXT,expires REAL,used REAL)')
     @contextmanager
     def db(self):

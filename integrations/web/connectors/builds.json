@@ -1,9 +1,9 @@
 {
  "manifest_version": 2,
  "id": "builds",
- "version": "1.1.0",
+ "version": "1.2.0",
  "title": "Code builds on the owner's computer",
- "description": "A BUILD.md (or a task packet) becomes a draft pull request on the owner's Mac or PC after /buildapprove; the owner follows the build live, answers the agent's questions and steers it with /buildnote.",
+ "description": "A BUILD.md (or a task packet) becomes a draft pull request on the owner's Mac or PC after /buildapprove; the owner follows the build live, answers the agent's questions and steers it with /buildnote; before the PR opens the agent's acceptance checks and the tests run and a second agent reviews the diff.",
  "class": "general",
  "source": "core",
  "plugin": "procurator-web",

@@ -30,12 +30,23 @@ if '--version' in sys.argv: print('fake 1.0'); sys.exit(0)
 if '--help' in sys.argv: print('--permission-mode --disallowedTools --allowedTools -p --output-format --sandbox --color -C --output-last-message'); sys.exit(0)
 if os.environ.get('CLAUDE_CODE_OAUTH_TOKEN'): open(os.environ['FAKE_LOG'], 'a').write(json.dumps(['token-seen', len(os.environ['CLAUDE_CODE_OAUTH_TOKEN'])]) + '\n')
 stream = '--input-format' in sys.argv            # Claude Code live mode (1.4.0): the prompt arrives on stdin
+if ('--permission-mode' in sys.argv and 'default' in sys.argv) or 'read-only' in sys.argv:   # 1.5.0: this run is the REVIEWER
+    open(os.environ['FAKE_LOG'], 'a').write(json.dumps(['review', os.path.basename(sys.argv[0]), '-m' in sys.argv or '--model' in sys.argv]) + '\n')
+    n = len([l for l in open(os.environ['FAKE_LOG']) if l.startswith('["review"')])
+    verdict = {'verdict': 'request_changes' if (os.environ.get('FAKE_REVIEW') == 'strict' and n == 1) else 'approve',
+               'summary': 'Looks fine.' if n > 1 or os.environ.get('FAKE_REVIEW') != 'strict' else 'Add a trailing comment.', 'issues': [] if n > 1 or os.environ.get('FAKE_REVIEW') != 'strict' else [{'severity': 'low', 'file': 'src/hello.txt', 'text': 'Mark it reviewed.'}]}
+    last = [sys.argv[i + 1] for i, x in enumerate(sys.argv) if x == '--output-last-message']
+    if last: open(last[0], 'w').write(json.dumps(verdict))
+    else: print(json.dumps({'type': 'result', 'subtype': 'success', 'is_error': False, 'result': 'Here is my review: ' + json.dumps(verdict), 'total_cost_usd': 0.01}))
+    sys.exit(0)
 def emit(ev): print(json.dumps(ev), flush=True)
 def read_user():
     line = sys.stdin.readline()
     if not line: sys.exit(0)
     return json.loads(line)['message']['content'][0]['text']
 def result(text, cost=0.42): emit({'type': 'result', 'subtype': 'success', 'is_error': False, 'result': text, 'total_cost_usd': cost, 'num_turns': 1})
+def write_check():                                 # 1.5.0: the acceptance check for "src/hello.txt exists"
+    os.makedirs('.procurator/checks', exist_ok=True); open('.procurator/checks/01-hello.sh', 'w').write('#!/bin/sh\ntest -f src/hello.txt || { echo missing; exit 1; }\n')
 argv_log = ['agent'] + sys.argv[1:4]
 if stream:
     prompt = read_user()
@@ -49,16 +60,35 @@ if mode == 'ask' and stream:
     result('QUESTION: Should the greeting be in English or Spanish?')
     answer = read_user()                           # the owner's note, relayed as "OWNER: …"
     emit({'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Write', 'input': {'file_path': 'src/hello.txt'}}]}})
-    os.makedirs('src', exist_ok=True); open('src/hello.txt', 'w').write(answer + '\n')
+    os.makedirs('src', exist_ok=True); open('src/hello.txt', 'w').write(answer + '\n'); write_check()
     result('Wrote src/hello.txt as the owner asked: ' + answer)
     read_user()                                    # EOF: PROCURATOR closed stdin
+if mode == 'verify' and stream:
+    # round 1: the file but a failing check; PROCURATOR's VERIFICATION message makes round 2 fix it
+    os.makedirs('src', exist_ok=True); os.makedirs('.procurator/checks', exist_ok=True)
+    open('src/hello.txt', 'w').write('hello\n')
+    open('.procurator/checks/01-hello-exists.sh', 'w').write('#!/bin/sh\ntest -f src/hello.txt || { echo missing; exit 1; }\n')
+    open('.procurator/checks/02-says-hola.sh', 'w').write('#!/bin/sh\ngrep -q hola src/hello.txt || { echo "no hola yet"; exit 1; }\n')
+    result('Added src/hello.txt with checks.')
+    fb = read_user()
+    open(os.environ['FAKE_LOG'], 'a').write(json.dumps(['feedback', fb[:60]]) + '\n')
+    if fb.startswith('VERIFICATION: CHECKS'):
+        open('src/hello.txt', 'w').write('hola\n')
+        result('Now says hola.')
+        fb = read_user()
+        open(os.environ['FAKE_LOG'], 'a').write(json.dumps(['feedback', fb[:60]]) + '\n')
+    if fb.startswith('VERIFICATION: REVIEW'):
+        open('src/hello.txt', 'a').write('# reviewed\n')
+        result('Addressed the review.')
+        read_user()
+    sys.exit(0)
 if mode == 'json-codex':
     emit({'type': 'item.started', 'item': {'type': 'command_execution', 'command': 'ls src'}})
     emit({'type': 'item.completed', 'item': {'type': 'agent_message', 'text': 'Adding the file now.'}})
-    os.makedirs('src', exist_ok=True); open('src/hello.txt', 'w').write('hello from codex\n')
+    os.makedirs('src', exist_ok=True); open('src/hello.txt', 'w').write('hello from codex\n'); write_check()
     emit({'type': 'item.completed', 'item': {'type': 'file_change', 'changes': [{'path': 'src/hello.txt'}]}})
 if mode == 'ok':
-    os.makedirs('src', exist_ok=True); open('src/hello.txt', 'w').write('hello from the agent\n')
+    os.makedirs('src', exist_ok=True); open('src/hello.txt', 'w').write('hello from the agent\n'); write_check()
 if mode == 'secret':
     open('src/config.js', 'w').write('const k = "sk-ant-' + 'A' * 40 + '";\n')
 if mode == 'outside':
@@ -117,8 +147,8 @@ class BuilderTest(unittest.TestCase):
         p = subprocess.run([sys.executable, RELAY, '--builder', name] + cmd.split(), input=json.dumps(data or {}), capture_output=True, text=True, env=self.env)
         return json.loads(p.stdout.strip().splitlines()[-1])
 
-    def worker(self, *args, mode='ok', timeout=120):
-        env = dict(self.env, FAKE_MODE=mode)
+    def worker(self, *args, mode='ok', timeout=120, **extra):
+        env = dict(self.env, FAKE_MODE=mode, **extra)
         return subprocess.run([sys.executable, WORKER] + list(args), capture_output=True, text=True, env=env, timeout=timeout)
 
     def report(self, build_id):
@@ -169,9 +199,9 @@ class BuilderTest(unittest.TestCase):
         r = self.report(i)
         self.assertEqual(r['status'], 'done', r)
         self.assertEqual(r['pr_url'], 'https://github.com/example-user/demo/pull/7')
-        self.assertEqual(r['tests']['status'], 'passed'); self.assertEqual(r['files'], ['src/hello.txt'])
+        self.assertEqual(r['tests']['status'], 'passed'); self.assertEqual(r['files'], ['.procurator/checks/01-hello.sh', 'src/hello.txt'])
         self.assertEqual(r['cost_usd'], 0.42); self.assertIn('Added src/hello.txt', r['summary'])
-        self.assertEqual([e['status'] for e in r['events']], ['claimed', 'preparing', 'running', 'testing', 'pushing', 'done'])
+        self.assertEqual([e['status'] for e in r['events']], ['claimed', 'preparing', 'running', 'testing', 'running', 'pushing', 'done'], 'verification gates run inside the agent round')
         branches = subprocess.run(['git', 'branch', '--list'], cwd=self.t('remote.git'), capture_output=True, text=True).stdout
         self.assertIn('procurator/' + i, branches)
         calls = [json.loads(l) for l in open(self.t('calls.log'))]
@@ -182,7 +212,10 @@ class BuilderTest(unittest.TestCase):
         self.assertIn('Change only src/', agent[2]); self.assertIn('QUESTION:', agent[2], 'the live protocol is in the prompt')
         self.assertEqual(agent[3], 'stream', 'Claude Code runs in stream-json mode by default (1.4.0)')
         progress = [json.loads(l) for l in open(self.t('state', 'procurator-build', 'progress', i + '.jsonl'))]
-        self.assertEqual([e['t'] for e in progress], ['tool', 'result']); self.assertEqual(progress[0]['name'], 'Write'); self.assertEqual(progress[0]['text'], 'src/hello.txt')
+        self.assertEqual([e['t'] for e in progress], ['tool', 'info', 'result']); self.assertEqual(progress[0]['name'], 'Write'); self.assertEqual(progress[0]['text'], 'src/hello.txt')
+        self.assertIn('Review (Codex): approve', progress[1]['text'], 'auto review picks the OTHER installed agent')
+        self.assertEqual(r['verification']['review']['verdict'], 'approve'); self.assertTrue(r['verification']['passed'])
+        self.assertEqual(r['verification']['checks'][0]['status'], 'passed')
         msg = subprocess.run(['git', 'log', '-1', '--format=%B', 'procurator/' + i], cwd=self.t('remote.git'), capture_output=True, text=True).stdout
         self.assertIn('PROCURATOR build ' + i, msg)
 
@@ -213,7 +246,7 @@ class BuilderTest(unittest.TestCase):
         shown = subprocess.run(['git', 'show', 'procurator/%s:src/hello.txt' % i], cwd=self.t('remote.git'), capture_output=True, text=True).stdout
         self.assertEqual(shown.strip(), 'OWNER: Spanish, please: hola')
         kinds = [json.loads(l)['t'] for l in open(self.t('state', 'procurator-build', 'progress', i + '.jsonl'))]
-        self.assertEqual(kinds, ['say', 'tool', 'question', 'note', 'tool', 'result'])
+        self.assertEqual(kinds, ['say', 'tool', 'question', 'note', 'tool', 'info', 'result'])
         calls = [json.loads(l) for l in open(self.t('calls.log'))]
         self.assertIn('model=opus', next(c for c in calls if c[0] == 'agent'))
 
@@ -224,9 +257,63 @@ class BuilderTest(unittest.TestCase):
         r = self.report(i)
         self.assertEqual(r['status'], 'done', r); self.assertIn('Codex summary', r['summary'])
         kinds = [(json.loads(l)['t'], json.loads(l).get('name')) for l in open(self.t('state', 'procurator-build', 'progress', i + '.jsonl'))]
-        self.assertEqual(kinds, [('tool', 'bash'), ('say', None), ('tool', 'edit'), ('result', None)])
+        self.assertEqual(kinds, [('tool', 'bash'), ('say', None), ('tool', 'edit'), ('info', None), ('result', None)])
         calls = [json.loads(l) for l in open(self.t('calls.log'))]
         self.assertIn('model=gpt-5.3-codex', next(c for c in calls if c[0] == 'agent'))
+
+    def test_verified_pr_checks_fail_then_pass_review_requests_changes_once(self):
+        """1.5.0: round 1 fails acceptance check 2 → VERIFICATION: CHECKS feedback → round 2 passes → strict reviewer asks for
+        changes → VERIFICATION: REVIEW → round 3 → second review approves → PR body carries the table and the review."""
+        i = self.queue(acceptance=['src/hello.txt exists', 'it says hola'], review='claude', review_model='sonnet')
+        out = self.worker('once', mode='verify', timeout=150, FAKE_REVIEW='strict')
+        self.assertEqual(out.returncode, 0, out.stderr)
+        r = self.report(i)
+        self.assertEqual(r['status'], 'done', r)
+        v = r['verification']
+        self.assertEqual([c['status'] for c in v['checks']], ['passed', 'passed']); self.assertEqual(v['rounds'], 2); self.assertTrue(v['passed'])
+        self.assertEqual(v['review']['verdict'], 'approve'); self.assertEqual(v['review']['agent'], 'claude'); self.assertEqual(v['review']['model'], 'sonnet')
+        calls = [json.loads(l) for l in open(self.t('calls.log'))]
+        fbs = [c[1] for c in calls if c[0] == 'feedback']
+        self.assertTrue(fbs[0].startswith('VERIFICATION: CHECKS'), fbs); self.assertTrue(fbs[1].startswith('VERIFICATION: REVIEW'), fbs)
+        self.assertEqual(len([c for c in calls if c[0] == 'review']), 2, 'review after the fix round, and again after the review round')
+        self.assertTrue(all(c[2] for c in calls if c[0] == 'review'), 'the review model is passed')
+        body = open(self.t('builds', i, 'pr-body.md')).read()
+        self.assertIn('## Verification', body); self.assertIn('**All gates passed.** 2 fix round(s)', body)
+        self.assertIn('| 2 | it says hola | ✅ passed |', body); self.assertIn('**approve** by Claude Code (sonnet). Looks fine.', body)
+        shown = subprocess.run(['git', 'show', 'procurator/%s:src/hello.txt' % i], cwd=self.t('remote.git'), capture_output=True, text=True).stdout
+        self.assertEqual(shown, 'hola\n# reviewed\n')
+        self.assertIn('.procurator/checks/02-says-hola.sh', subprocess.run(['git', 'ls-tree', '-r', '--name-only', 'procurator/' + i], cwd=self.t('remote.git'), capture_output=True, text=True).stdout)
+
+    def test_review_off_and_rounds_exhausted_leave_open_items_in_the_pr(self):
+        cfg = dict(self.cfg, verify_rounds=0); json.dump(cfg, open(self.t('builder', 'config.json'), 'w'))
+        i = self.queue(acceptance=['src/hello.txt exists', 'it says hola'], review='off')
+        out = self.worker('once', mode='verify', timeout=150)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        r = self.report(i)
+        v = r['verification']
+        self.assertEqual(r['status'], 'done'); self.assertFalse(v['passed']); self.assertEqual(v['unresolved'], 'CHECKS'); self.assertIsNone(v['review'])
+        self.assertEqual([c['status'] for c in v['checks']], ['passed', 'failed']); self.assertIn('no hola yet', v['checks'][1]['output'])
+        self.assertIn('verification has open items', r['message'])
+        body = open(self.t('builds', i, 'pr-body.md')).read()
+        self.assertIn('**Open items — read before merging.**', body); self.assertIn('| 2 | it says hola | ❌ failed |', body); self.assertIn('Review was off', body)
+
+    def test_screenshots_from_the_repo_preview_land_in_the_pr(self):
+        fake_chrome = self.t('bin', 'chrome')
+        open(fake_chrome, 'w').write('#!/usr/bin/env python3\nimport sys\nout=[a for a in sys.argv if a.startswith("--screenshot=")][0].split("=",1)[1]\nopen(out,"wb").write(b"PNG" + sys.argv[-1].encode())\n')
+        os.chmod(fake_chrome, 0o755)
+        cfg = json.loads(json.dumps(self.cfg)); cfg['tools']['chrome'] = fake_chrome
+        cfg['repos']['example-user/demo']['preview'] = {'command': sys.executable + ' -m http.server 18731 --bind 127.0.0.1', 'url': 'http://127.0.0.1:18731', 'paths': ['/', '/src/'], 'ready_s': 20}
+        json.dump(cfg, open(self.t('builder', 'config.json'), 'w'))
+        i = self.queue(review='off')
+        out = self.worker('once', timeout=150)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        r = self.report(i)
+        self.assertEqual(r['status'], 'done', r); self.assertEqual(r['verification']['screenshots'], 2)
+        tree = subprocess.run(['git', 'ls-tree', '-r', '--name-only', 'procurator/' + i], cwd=self.t('remote.git'), capture_output=True, text=True).stdout
+        self.assertIn('.procurator/evidence/%s/01.png' % i, tree); self.assertIn('.procurator/evidence/%s/02.png' % i, tree)
+        body = open(self.t('builds', i, 'pr-body.md')).read()
+        self.assertIn('![/](https://github.com/example-user/demo/blob/procurator/%s/.procurator/evidence/%s/01.png?raw=true)' % (i, i), body)
+        self.assertFalse(subprocess.run(['pgrep', '-f', 'http.server 18731'], capture_output=True).stdout, 'the preview server is stopped')
 
     def test_model_must_be_on_the_builders_list_when_one_is_set(self):
         import importlib.util

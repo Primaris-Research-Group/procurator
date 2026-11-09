@@ -24,7 +24,7 @@ Captured on a fresh test server right after a first install (names changed).
 |---|---|---|
 | For | Professionals who want an assistant | Developers who also want a coding orchestrator |
 | Mail, calendar, contacts, phone, web errands, task packets, research, health logistics, dashboard | ✓ | ✓ |
-| Code builds: a BUILD.md becomes a **draft pull request** on your own Mac/PC (Claude Code or Codex, your choice of model); you follow it live, answer its questions and steer it with `/buildnote` | — | ✓ |
+| Code builds: a BUILD.md becomes a **verified draft pull request** on your own Mac/PC (Claude Code or Codex, your choice of model): live progress, `/buildnote` steering, acceptance checks, tests, cross-agent review and screenshots before it opens; chains of builds across merges | — | ✓ |
 | Builder relay, Composer "coding" packets, Builds tab | — | ✓ |
 | Recommended box | 4 GB | 8 GB |
 | Install | `install.sh` | `install.sh --edition x` |
@@ -42,7 +42,7 @@ The edition is a switch, not a fork: one codebase, one version. On a standard bo
 - **Research**: web, news, quotes, PubMed/Europe PMC/ClinicalTrials.gov, whole-document reading.
 - **Health logistics** (optional module, off by default): appointment and refill errands, portal paperwork, under explicit grants; labeled health values never leave to an unlisted recipient.
 - **Dashboard**: overview, packets, usage meter, accounts, connections, live browser view, approvals practice.
-- **Code builds (PROCURATOR-X)**: write a Markdown packet, pick the model, approve once; a builder on your own machine runs Claude Code or Codex in a fresh clone with push disabled and opens a draft PR. You watch progress in Telegram, the agent's questions wait for your answer, `/buildnote` steers it ([docs/builds.md](docs/builds.md)).
+- **Code builds (PROCURATOR-X)**: write a Markdown packet (or let the Composer interview you), pick the model, approve once; a builder on your own machine runs Claude Code or Codex in a fresh clone with push disabled. You watch progress in Telegram, the agent's questions wait for your answer, `/buildnote` steers it. Before the draft PR opens, the agent's own acceptance checks and the repo's tests run and **the other agent reviews the diff**; the PR carries the verification table, the review and screenshots of the running app ([docs/builds.md](docs/builds.md)).
 - **Any model, visible meter**: Anthropic, OpenAI or others per task family; `/ai` switches, `/meter` shows spend.
 
 Counted from the code: **180 model tools** across **36 connector manifests**, **97 owner commands**, **133 test files**.

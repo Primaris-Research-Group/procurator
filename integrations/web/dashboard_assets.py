@@ -30,8 +30,8 @@ td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top;word-b
 .chip.active,.chip.done,.chip.online,.chip.completed,.chip.ready{background:#dff5ea;color:#0f6b46}.chip.paused,.chip.blocked,.chip.over_budget,.chip.uncertain,.chip.waiting_for_owner,.chip.waiting_for_approval,.chip.awaiting_owner{background:#fff1d6;color:#7a4a00}
 ol.steps{margin:6px 0 10px;padding-left:22px}ol.steps li{margin:4px 0;color:var(--muted)}
 .chip.needed{background:#fff1d1;color:#7a4b00}
-.chip.failed,.chip.offline,.chip.cancelled,.chip.rejected,.chip.expired{background:#fde3e1;color:#8c1d16}.chip.running,.chip.in_progress,.chip.claimed,.chip.preparing,.chip.testing,.chip.pushing,.chip.queued{background:#dde9fb;color:#114a8f}
-@media (prefers-color-scheme:dark){.chip.active,.chip.done,.chip.online,.chip.completed,.chip.ready{background:#143b2b;color:#7fe0b3}.chip.paused,.chip.blocked,.chip.over_budget,.chip.uncertain,.chip.waiting_for_owner,.chip.waiting_for_approval,.chip.awaiting_owner{background:#3f2d0c;color:#f3c777}.chip.failed,.chip.offline,.chip.cancelled,.chip.rejected,.chip.expired{background:#4a1612;color:#ffb3ab}.chip.running,.chip.in_progress,.chip.claimed,.chip.preparing,.chip.testing,.chip.pushing,.chip.queued{background:#13304f;color:#9cc4ff}}
+.chip.failed,.chip.offline,.chip.cancelled,.chip.rejected,.chip.expired,.chip.bad{background:#fde3e1;color:#8c1d16}.chip.ok,.chip.passed,.chip.all_gates_passed,.chip.approve{background:#dff5ea;color:#0f6b46}.chip.warn,.chip.open_items,.chip.missing,.chip.timed_out,.chip.request_changes,.chip.waiting_owner{background:#fff1d6;color:#7a4a00}.chip.running,.chip.in_progress,.chip.claimed,.chip.preparing,.chip.testing,.chip.pushing,.chip.queued{background:#dde9fb;color:#114a8f}
+@media (prefers-color-scheme:dark){.chip.bad{background:#4a1612;color:#ffb3ab}.chip.ok,.chip.passed,.chip.all_gates_passed,.chip.approve{background:#143b2b;color:#7fe0b3}.chip.warn,.chip.open_items,.chip.missing,.chip.timed_out,.chip.request_changes,.chip.waiting_owner{background:#3f2d0c;color:#f3c777}.chip.active,.chip.done,.chip.online,.chip.completed,.chip.ready{background:#143b2b;color:#7fe0b3}.chip.paused,.chip.blocked,.chip.over_budget,.chip.uncertain,.chip.waiting_for_owner,.chip.waiting_for_approval,.chip.awaiting_owner{background:#3f2d0c;color:#f3c777}.chip.failed,.chip.offline,.chip.cancelled,.chip.rejected,.chip.expired{background:#4a1612;color:#ffb3ab}.chip.running,.chip.in_progress,.chip.claimed,.chip.preparing,.chip.testing,.chip.pushing,.chip.queued{background:#13304f;color:#9cc4ff}}
 button,.btn{font:inherit;font-size:14px;padding:8px 13px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}button.danger{border-color:var(--bad);color:var(--bad)}button:disabled{opacity:.5;cursor:default}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -185,13 +185,14 @@ if(comp){
   try{await api('/compose/'+id+'/message','POST',{text:t});$('#c-text').value='';poll();}catch(err){say($('#msg'),err.message,'bad');send.disabled=false;}});
  $('#c-text').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();$('#c-form').requestSubmit();}});
  $('#c-preview').addEventListener('click',async()=>{const p=$('#c-plan');try{const j=await api('/compose/'+id+'/preview','POST',{});p.hidden=false;
-  p.textContent=j.ok?j.text+((j.approvals||[]).length?'\n\nWhat you will approve, step by step:\n'+j.approvals.map(x=>'• '+x).join('\n'):'\n\nNo step needs an approval (read-only work).'):'Fix first: '+(j.errors||[]).join(' ');}catch(err){say($('#msg'),err.message,'bad');}});
+  p.textContent=j.ok?(j.build_md?'BUILD.md the builder will get:\n\n'+j.build_md+'\n\n':'')+j.text+((j.approvals||[]).length?'\n\nWhat you will approve, step by step:\n'+j.approvals.map(x=>'• '+x).join('\n'):'\n\nNo step needs an approval (read-only work).'):'Fix first: '+(j.errors||[]).join(' ');}catch(err){say($('#msg'),err.message,'bad');}});
  const att=$('#c-attach');if(att)att.addEventListener('change',async()=>{for(const f of [...att.files]){if(!/\.(md|txt)$/i.test(f.name)){say($('#msg'),f.name+' is not a .md or .txt file.','bad');continue;}
   try{const j=await api('/compose/'+id+'/attach','POST',{name:f.name,text:await f.text()});say($('#msg'),j.message,'ok');}catch(err){say($('#msg'),err.message,'bad');}}att.value='';poll();});
  comp.addEventListener('click',async e=>{const b=e.target.closest('button[data-detach]');if(!b)return;e.preventDefault();
   try{const j=await api('/compose/'+id+'/attach','POST',{name:b.dataset.detach,remove:true});say($('#msg'),j.message,'ok');poll();}catch(err){say($('#msg'),err.message,'bad');}});
  save.addEventListener('click',async()=>{if(!confirm('Save this as a DRAFT packet? Nothing runs until you activate it on the packet page.'))return;save.disabled=true;
-  try{const j=await api('/compose/'+id+'/save','POST',{});say($('#msg'),'Saved '+j.mission+' ('+j.revision+') as a draft.','ok');setTimeout(()=>location.href=base+'/packets/'+encodeURIComponent(j.mission),800);}
+  try{const j=await api('/compose/'+id+'/save','POST',{});const h=j.build_handoff&&j.build_handoff.command;
+   say($('#msg'),'Saved '+j.mission+' ('+j.revision+') as a draft.'+(h?' To build it, send '+h+' to your bot in Telegram (the BUILD REVIEW and approval line follow).':''),'ok');setTimeout(()=>location.href=base+'/packets/'+encodeURIComponent(j.mission)+(h?'?buildfrom=1':''),h?2500:800);}
   catch(err){say($('#msg'),err.message,'bad');save.disabled=false;}});
  $('#c-discard').addEventListener('click',async()=>{if(!confirm('Discard this session? The conversation and draft are deleted.'))return;
   try{await api('/compose/'+id+'/discard','POST',{});location.href=base+'/compose';}catch(err){say($('#msg'),err.message,'bad');}});
@@ -229,9 +230,9 @@ def fmt_usd(v):
     return '$%.2f' % (v or 0)
 
 
-def chip(status):
+def chip(status, tone=''):
     s = str(status or '').lower().replace(' ', '_')
-    return '<span class="chip %s">%s</span>' % (esc(s), esc(s.replace('_', ' ')))
+    return '<span class="chip %s%s">%s</span>' % (esc(s), (' ' + esc(tone)) if tone else '', esc(s.replace('_', ' ')))
 
 
 def bar(fraction, warn=0.8):

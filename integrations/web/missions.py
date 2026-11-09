@@ -88,8 +88,10 @@ def next_tick(now, cadence_minutes, start_hour=7, end_hour=21):
 
 
 class Missions:
-    def __init__(self, path, provider=None, now=time.time, checks=None):
+    def __init__(self, path, provider=None, now=time.time, checks=None, build_dir=None):
         self.path, self.provider, self.now = path, provider, now
+        # build store (state/procurator-build): a step awaiting merge:<build id> reads reports/<id>.json to see pr_state (0.32.0)
+        self.build_dir = build_dir
         # checks() -> {'saved_logins': [...], 'builders': [...]} from the broker, for packet validation (Nov 6).
         self.checks = checks
         # quiet() -> reason string when every packet tick is paused (dashboard quiet mode / daily budget), else None.
@@ -662,6 +664,10 @@ class Missions:
                 blocked.append({**unit, 'waiting_for': unmet})
             elif nxt['status'] in ('waiting_for_owner', 'waiting_for_approval'):
                 blocked.append({**unit, 'waiting_for': [awaiting or nxt['status']]})
+            elif awaiting and awaiting.startswith('merge:') and not self.build_merged(awaiting[6:]):
+                blocked.append({**unit, 'waiting_for': [awaiting]})
+            elif awaiting and awaiting.startswith('merge:'):
+                eligible.append({**unit, 'instruction': 'Build %s was MERGED: start this build from the base branch as it is now, and list the earlier PR(s) under "Previous steps" in its goal.' % awaiting[6:]})
             elif awaiting and not orchestrator.date_reached(awaiting, today):
                 blocked.append({**unit, 'waiting_for': [awaiting]})
             elif nxt['status'] == 'uncertain':
@@ -674,6 +680,17 @@ class Missions:
         return {'eligible': eligible[:5], 'blocked': blocked, 'unverified_deadlines': risk, 'deadlines_within_7_days': soon,
                 'open_questions': db.execute("SELECT COUNT(*) n FROM questions WHERE slug=? AND status='open'", (slug,)).fetchone()['n'],
                 'rule': 'Work deadline risk first, then dependencies, then recovery value. One external effect at a time; persist results before dependent work.'}
+
+    def build_merged(self, build_id):
+        """True when the builder reported the build's pull request as merged (build store reports/<id>.json, pr_state MERGED)."""
+        if not self.build_dir or not re.fullmatch(r'[a-f0-9]{16}', build_id or ''):
+            return False
+        try:
+            with open(os.path.join(str(self.build_dir), 'reports', build_id + '.json')) as f:
+                r = json.load(f)
+        except (OSError, ValueError):
+            return False
+        return isinstance(r, dict) and r.get('pr_state') == 'MERGED'
 
     # ---------- owner controls ----------
     def owner(self, db, a):

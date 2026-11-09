@@ -86,7 +86,7 @@ class Base(unittest.TestCase):
         self.catalog = Catalog(logins=lambda: LOGINS, builders=lambda: BUILDERS, health=lambda: HEALTH, lanes=lambda: LANES, now=now)
         self.model = FakeModel([])
         self.c = Composer(os.path.join(self.tmp.name, 'composer.sqlite3'), missions=self.missions, catalog=self.catalog, key_reader=lambda: 'test-key',
-                          caller=self.model, checks=self.missions.checks, now=now, background=False)
+                          caller=self.model, checks=self.missions.checks, now=now, background=False, build_dir=os.path.join(self.tmp.name, 'build-store'))
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -148,6 +148,41 @@ class CoverageTests(Base):
         for needle in ('"chase", which is not a saved login', 'Step 1 (call): what to do if', 'Step 1 (call): who to call', '"irs" is not a saved login',
                        'Step 3 (appointment): an active health grant', 'cannot create grants', 'health connection id'):
             self.assertIn(needle, miss)
+
+    def test_coding_interview_renders_build_md_and_hands_it_to_telegram(self):
+        """0.32.0 spec interview: vague acceptance is a gap; scope/avoid/model/time are notes; saving writes BUILD.md to the build
+        store and tells the owner the /buildfrom command."""
+        s, errs = apply_patch({}, dict(SCENARIOS['coding'], done_when=['It works well', 'Tests pass']))
+        self.assertEqual(errs, [])
+        texts = [g['text'] for g in coverage(s, self.catalog.build())]
+        self.assertTrue(any(t.startswith('Acceptance items the builder can check') and 'It works well' in t for t in texts), texts)
+        self.assertTrue(any(t.startswith('Scope:') for t in texts)); self.assertTrue(any(t.startswith('What must not be touched') for t in texts))
+        self.assertTrue(any(t.startswith('Model and review') for t in texts)); self.assertTrue(any(t.startswith('Time limit') for t in texts))
+        s, errs = apply_patch(s, {'done_when': ['README.md contains a tests badge', 'Tests pass'], 'paths': ['README.md', 'docs/'], 'avoid': ['CI workflow files', 'package.json'],
+                                  'build_model': 'opus', 'review': 'codex', 'review_model': 'gpt-5.3-codex', 'max_minutes': 20, 'rules': ['Keep the badge on one line.']})
+        self.assertEqual(errs, [])
+        self.assertFalse([g for g in coverage(s, self.catalog.build()) if g['level'] == 'missing'])
+        _, errs = apply_patch(s, {'review': 'gemini', 'paths': ['../etc'], 'max_minutes': 500, 'build_model': 'x;rm'})
+        self.assertEqual(len(errs), 4, errs)
+        files = render(s, TODAY)
+        self.assertIn('BUILD.md', files)
+        md = files['BUILD.md']
+        self.assertTrue(md.startswith('---\nrepo: example-org/procurator-sandbox\nagent: claude\nmodel: opus\nreview: codex\nreview_model: gpt-5.3-codex\nbuilder: mac\npaths: [README.md, docs/]\nmax_minutes: 20\n---\n'), md)
+        self.assertIn('# Sandbox README badge\n\n## Goal\nAdd a test-status badge to the sandbox README.', md)
+        self.assertIn('## Acceptance\n- [ ] README.md contains a tests badge\n- [ ] Tests pass', md)
+        self.assertIn('## Do not touch\n- CI workflow files\n- package.json', md); self.assertIn('## Notes\n- Keep the badge on one line.', md)
+        self.assertIn('Packet: pass BUILD.md (this packet) to build_prepare as markdown', files['00-start.md'])
+        # save: the packet is a draft, BUILD.md is in it, and the hand-off command is returned
+        sid = self.c.new()['id']
+        self.say(sid, 'add a badge', [('update_spec', {'patch': s})], [('reply', {'message': 'Ready.', 'status': 'draft_ready'})])
+        pv = self.c.preview(sid)
+        self.assertTrue(pv['ok']); self.assertIn('## Acceptance', pv['build_md'])
+        saved = self.c.save(sid)
+        self.assertEqual(saved['build_handoff']['command'], '/buildfrom ' + saved['mission'])
+        stored = open(os.path.join(self.tmp.name, 'build-store', 'packets', saved['mission'] + '.md')).read()
+        self.assertEqual(stored, md)
+        m = self.missions.call('mission_get', {'mission': saved['mission']}, True)
+        self.assertIn('BUILD.md', m['files'] if isinstance(m.get('files'), dict) else json.dumps(m))
 
     def test_a_repo_no_builder_allows_is_missing(self):
         s, _ = apply_patch({}, dict(SCENARIOS['coding'], repo='someone/else'))

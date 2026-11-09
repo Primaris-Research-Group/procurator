@@ -23,6 +23,7 @@ const PR = /^https:\/\/github\.com\/[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}\/p
 const ID = /^[a-f0-9]{16}$/;
 const NAME = /^[a-z0-9-]{1,20}$/;
 const MODEL = /^[A-Za-z0-9._:/-]{2,64}$/;
+const REVIEWERS = ['auto', 'claude', 'codex', 'off'];
 const PENDING_MS = 30 * 60000, ONLINE_MS = 3 * 60000, OFFLINE_ALERT_MS = 10 * 60000, QUEUE_MAX_MS = 24 * 3600000;
 const AGENTS = {claude: 'Claude Code', codex: 'Codex'};
 const ACTIVE = ['queued', 'claimed', 'preparing', 'running', 'waiting_owner', 'testing', 'pushing', 'cancel_requested'];
@@ -60,7 +61,7 @@ export function parsePacketMarkdown(md) {
       const value = raw.replace(/^["']|["']$/g, '');
       if (key === 'paths' || key === 'acceptance') out[key] = value.replace(/^\[|\]$/g, '').split(',').map(x => x.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
       else if (key === 'max_minutes') out.max_minutes = Number(value);
-      else if (['repo', 'base', 'agent', 'model', 'builder', 'title', 'mission', 'step', 'request_id'].includes(key)) out[key] = value;
+      else if (['repo', 'base', 'agent', 'model', 'review', 'review_model', 'builder', 'title', 'mission', 'step', 'request_id'].includes(key)) out[key] = value;
     }
   }
   const sections = {};
@@ -88,7 +89,7 @@ export function validatePlan(a, builders) {
     const parsed = parsePacketMarkdown(markdown);
     args = {...parsed, ...Object.fromEntries(Object.entries(explicit).filter(([, v]) => v != null && v !== ''))};
   }
-  const allowed = ['repo', 'base', 'agent', 'model', 'builder', 'title', 'goal', 'acceptance', 'paths', 'max_minutes', 'request_id', 'mission', 'step'];
+  const allowed = ['repo', 'base', 'agent', 'model', 'review', 'review_model', 'builder', 'title', 'goal', 'acceptance', 'paths', 'max_minutes', 'request_id', 'mission', 'step'];
   const extra = Object.keys(args).filter(k => !allowed.includes(k));
   if (extra.length) throw new Error('Unknown field(s): ' + extra.join(', '));
   const repo = String(args.repo ?? '').trim();
@@ -111,6 +112,10 @@ export function validatePlan(a, builders) {
   if (model && !MODEL.test(model)) throw new Error('model must be a short model name the agent accepts (e.g. opus, sonnet, gpt-5.3-codex).');
   const offered = eligible.flatMap(b => b.models?.[agent] ?? []);
   if (model && offered.length && !offered.includes(model)) throw new Error(`${model} is not on the builder's model list for ${AGENTS[agent]} (${[...new Set(offered)].join(', ')}). Leave model empty for the builder's default.`);
+  const review = args.review == null || args.review === '' ? '' : String(args.review).trim().toLowerCase();
+  if (review && !REVIEWERS.includes(review)) throw new Error('review must be auto (the other installed agent reviews the diff), claude, codex or off.');
+  const reviewModel = args.review_model == null || args.review_model === '' ? '' : String(args.review_model).trim();
+  if (reviewModel && !MODEL.test(reviewModel)) throw new Error('review_model must be a short model name.');
   const title = clean(args.title, 200).replace(/\s+/g, ' ');
   if (title.length < 3 || title.length > 100) throw new Error('title must be 3-100 characters.');
   const goal = clean(args.goal, 4001);
@@ -130,14 +135,14 @@ export function validatePlan(a, builders) {
   if (mission !== null && !/^[a-z0-9-]{2,24}$/.test(mission)) throw new Error('mission must be a packet name from mission_list.');
   const step = args.step == null || args.step === '' ? null : String(args.step);
   if (step !== null && !/^[A-Za-z0-9._:-]{1,48}\/s\d{1,2}$/.test(step)) throw new Error('step must look like THREAD/s2.');
-  return {requestId, plan: {repo, base, agent, ...(model ? {model} : {}), builder: target, title, goal, acceptance: checks, paths, max_minutes: max}, mission, step};
+  return {requestId, plan: {repo, base, agent, ...(model ? {model} : {}), ...(review ? {review} : {}), ...(reviewModel ? {review_model: reviewModel} : {}), builder: target, title, goal, acceptance: checks, paths, max_minutes: max}, mission, step};
 }
 
 export class Builds {
   constructor(dir, gateway, now = () => Date.now()) {
     this.dir = dir; this.gateway = gateway; this.now = now;
     fs.mkdirSync(dir, {recursive: true, mode: 0o700});
-    for (const d of ['queue', 'cancel', 'claims', 'reports', 'builders', 'notes', 'progress']) fs.mkdirSync(path.join(dir, d), {recursive: true, mode: 0o700});
+    for (const d of ['queue', 'cancel', 'claims', 'reports', 'builders', 'notes', 'progress', 'packets']) fs.mkdirSync(path.join(dir, d), {recursive: true, mode: 0o700});
     this.file = path.join(dir, 'jobs.json');
   }
   read() { try { return JSON.parse(fs.readFileSync(this.file, 'utf8')); } catch (e) { if (e.code === 'ENOENT') return {jobs: []}; throw e; } }
@@ -172,7 +177,29 @@ export class Builds {
       insertions: Number.isInteger(r.insertions) ? r.insertions : undefined, deletions: Number.isInteger(r.deletions) ? r.deletions : undefined,
       duration_s: Number.isInteger(r.duration_s) ? r.duration_s : undefined, cost_usd: typeof r.cost_usd === 'number' ? r.cost_usd : undefined,
       question: clean(r.question, 1500) || null, model: MODEL.test(r.model ?? '') ? r.model : null, progress_count: Number.isInteger(r.progress_count) ? r.progress_count : 0,
+      verification: this.verificationOf(r.verification), pr_state: ['OPEN', 'MERGED', 'CLOSED'].includes(r.pr_state) ? r.pr_state : null, merged_at: typeof r.merged_at === 'string' ? clean(r.merged_at, 40) : null,
       updated_at: Number(r.updated_at) || 0};
+  }
+  verificationOf(v) {
+    if (!v || typeof v !== 'object') return null;
+    const checks = (Array.isArray(v.checks) ? v.checks : []).slice(0, 10).map(c => ({n: Number(c.n) || 0, text: clean(c.text, 300), status: clean(c.status, 12), output: clean(c.output, 600)}));
+    const rv = v.review && typeof v.review === 'object' ? {verdict: clean(v.review.verdict, 20), agent: AGENTS[v.review.agent] ? v.review.agent : '', model: MODEL.test(v.review.model ?? '') ? v.review.model : '',
+      summary: clean(v.review.summary, 1500), issues: (Array.isArray(v.review.issues) ? v.review.issues : []).slice(0, 12).map(i => ({severity: clean(i.severity, 8), file: clean(i.file, 200), text: clean(i.text, 500)}))} : null;
+    return {checks, review: rv, rounds: Number(v.rounds) || 0, unresolved: clean(v.unresolved, 20) || null, screenshots: Number(v.screenshots) || 0, screenshot_note: clean(v.screenshot_note, 300), passed: v.passed === true};
+  }
+  verificationLines(v, agent) {
+    if (!v) return [];
+    const out = [];
+    if (v.checks.length) {
+      const ok = v.checks.filter(c => c.status === 'passed').length;
+      out.push(`Acceptance: ${ok}/${v.checks.length} checks passed` + (ok < v.checks.length ? ' — ' + v.checks.filter(c => c.status !== 'passed').map(c => `#${c.n} ${c.status.replace(/_/g, ' ')}`).join(', ') : ''));
+    }
+    if (v.review) out.push(`Review (${AGENTS[v.review.agent] || 'reviewer'}${v.review.model ? ', ' + v.review.model : ''}): ${v.review.verdict.replace(/_/g, ' ')}` + (v.review.summary ? ' — ' + v.review.summary.slice(0, 300) : ''));
+    if (v.screenshots) out.push(`Screenshots: ${v.screenshots} in the PR`);
+    else if (v.screenshot_note) out.push('Screenshots: none (' + v.screenshot_note + ')');
+    if (v.rounds) out.push(`${v.rounds} fix round(s) were sent back to ${AGENTS[agent] || 'the agent'}`);
+    out.push(v.passed ? 'Verification: all gates passed' : `Verification: OPEN ITEMS${v.unresolved ? ' (' + v.unresolved.toLowerCase() + ')' : ''} — read the PR's Verification section before merging`);
+    return out;
   }
   // progress/<id>.jsonl (relay-written): the last n entries, each {t, text, name?, at}.
   progress(id, n = 15) {
@@ -188,6 +215,15 @@ export class Builds {
     if (e.t === 'note') return `${t}You: ${e.text}`;
     if (e.t === 'result') return `${t}✔ ${e.text}`;
     return `${t}${e.text}`;
+  }
+  // /buildfrom SLUG: the BUILD.md the Packet Composer saved for a coding packet (packets/<slug>.md, written by the web broker).
+  async fromPacket(slug, assertOwner = () => {}) {
+    assertOwner();
+    const name = String(slug ?? '').trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9-]{1,23}$/.test(name)) throw new Error('Use: /buildfrom SLUG — the packet name the Composer gave you (letters, digits, hyphens).');
+    let md; try { md = fs.readFileSync(path.join(this.dir, 'packets', name + '.md'), 'utf8'); } catch { throw new Error(`No BUILD.md saved for "${name}". Save the coding packet in the Composer first (dashboard › Compose), or paste the BUILD.md here.`); }
+    const out = await this.prepare({markdown: md, mission: name, request_id: 'buildfrom-' + name + '-' + digest(md).slice(0, 8)});
+    return {...out, packet: name};
   }
   // /buildnote: the owner's message for the agent, queued for the relay to hand over with the builder's next report.
   note(id, text, assertOwner = () => {}) {
@@ -243,13 +279,14 @@ export class Builds {
   review(r) {
     const p = r.plan;
     return [`BUILD REVIEW — ${r.id}`,
-      `Repo: ${p.repo} (from ${p.base}) · ${AGENTS[p.agent]}${p.model ? ' (' + p.model + ')' : ''}`,
+      `Repo: ${p.repo} (from ${p.base}) · ${AGENTS[p.agent]}${p.model ? ' (' + p.model + ')' : ''}` + (p.review === 'off' ? ' · no independent review' : ` · reviewed by ${p.review && p.review !== 'auto' ? AGENTS[p.review] : 'the other agent'}${p.review_model ? ' (' + p.review_model + ')' : ''}`),
       'Runs on: ' + this.runsOn(p),
       `Title: ${p.title}`, '', 'Goal:', p.goal,
       ...(p.acceptance.length ? ['', 'Done when:', ...p.acceptance.map(x => '• ' + x)] : []), '',
       'Files it may change: ' + (p.paths.length ? p.paths.join(', ') : 'any file in the repo'),
       `Time limit: ${p.max_minutes} min`, '',
-      'While it works: I message you its progress; /buildnote ' + r.id + ' <text> steers it, and if it needs a decision it stops and asks you.', '',
+      'While it works: I message you its progress; /buildnote ' + r.id + ' <text> steers it, and if it needs a decision it stops and asks you.',
+      'Before the PR opens: its acceptance checks run, the tests run, and ' + (p.review === 'off' ? 'no second agent reviews it (review: off).' : 'a second agent reviews the diff; failures go back to it first.'), '',
       `What happens: the builder clones the repo into a fresh folder, runs ${AGENTS[p.agent]} with your own subscription on branch procurator/${r.id}, runs the test command saved in that machine's builder settings, and opens a DRAFT pull request for you to review. Nothing is merged or deployed, and secrets are blocked from the change.`, '',
       'Approve within 30 minutes with the entire plain-text line:', `/buildapprove ${r.id} ${r.hash}`, `Cancel: /buildcancel ${r.id}`].join('\n');
   }
@@ -285,6 +322,7 @@ export class Builds {
     return {id: r.id, status, repo: r.plan.repo, base: r.plan.base, agent: r.plan.agent, model: r.plan.model || undefined, title: r.plan.title, target: r.plan.builder || 'any', created: new Date(r.createdAt).toISOString(), ...(r.mission ? {mission: r.mission, step: r.step} : {}),
       ...(ACTIVE.includes(status) ? {progress: this.progress(r.id, 8).map(e => this.progressLine(e)), steer: `/buildnote ${r.id} <text>`} : {}),
       ...(rep ? {builder: rep.builder ? this.labelOf(rep.builder) : undefined, builder_status: rep.status, message: rep.message || undefined, question: rep.question || undefined, pr_url: rep.pr_url || undefined, branch: rep.branch || undefined, tests: rep.tests?.status || undefined,
+        verification: rep.verification || undefined, pr_state: rep.pr_state || undefined, merged_at: rep.merged_at || undefined,
         files_changed: rep.file_count, summary: rep.summary || undefined, minutes: rep.duration_s ? Math.round(rep.duration_s / 60) : undefined} : {})};
   }
   status(id) {
@@ -301,6 +339,19 @@ export class Builds {
     for (const r of j.jobs) {
       r.notified ??= {};
       if (r.status === 'pending' && r.expiresAt <= this.now()) { r.status = 'expired'; changed = true; continue; }
+      if (r.status === 'done' && !r.merged) {
+        // Long-horizon packets (0.32.0): the builder polls its pull requests; a merge unblocks packet steps waiting on it.
+        const rep = this.report(r.id);
+        if (rep?.pr_state === 'MERGED') {
+          r.merged = rep.merged_at || new Date(this.now()).toISOString(); changed = true;
+          try { await this.notify(`Build ${r.id} merged (${r.plan.title}, ${r.plan.repo}).` + (r.mission ? ` Packet ${r.mission}: the step waiting on this merge can start at its next work session.` : ''), `${r.id}:merged`); } catch {}
+          try { await this.onMerge?.(r, rep); } catch {}
+        } else if (rep?.pr_state === 'CLOSED' && !r.closedNotified) {
+          r.closedNotified = true; changed = true;
+          try { await this.notify(`Build ${r.id}'s pull request was closed without merging (${r.plan.title}).` + (r.mission ? ` Packet ${r.mission} steps waiting on it stay blocked; revise the packet or ask me to retry.` : ''), `${r.id}:closed`); } catch {}
+        }
+        continue;
+      }
       if (!ACTIVE.includes(r.status)) continue;
       const rep = this.report(r.id);
       if (rep && rep.status && rep.status !== r.macStatus) {
@@ -347,6 +398,7 @@ export class Builds {
     return [`BUILD READY — ${r.id}`, `${r.plan.title} (${r.plan.repo}, built on ${where({label: this.labelOf(rep.builder || r.builder)})})`, `Draft pull request: ${rep.pr_url ?? '(link missing — check /buildstatus ' + r.id + ')'}`,
       'Tests: ' + (t === 'passed' ? 'passed' : t === 'failed' ? 'FAILED (see the PR before merging)' : t === 'timed_out' ? 'timed out' : 'none configured for this repo') + (rep.tests?.command ? ` (${rep.tests.command})` : ''),
       `Changed: ${rep.file_count ?? rep.files.length} file(s)` + (rep.insertions != null ? `, +${rep.insertions}/-${rep.deletions ?? 0} lines` : '') + (rep.duration_s ? `, ${Math.max(1, Math.round(rep.duration_s / 60))} min` : '') + (rep.cost_usd ? `, ~$${rep.cost_usd.toFixed(2)} of usage` : ''),
+      ...this.verificationLines(rep.verification, r.plan.agent),
       ...(rep.summary ? ['', rep.summary.slice(0, 1500)] : []), '', 'Review it on GitHub; nothing is merged or deployed until you do it.'].join('\n');
   }
 }
@@ -359,6 +411,8 @@ export function registerBuilds(api, builds, ownerContext) {
       properties: {repo: {type: 'string', description: 'GitHub owner/name, e.g. example-user/website'}, base: {type: 'string', description: 'Branch to start from (default: the builder\'s setting, usually main)'},
         agent: {type: 'string', enum: ['claude', 'codex'], description: 'claude = Claude Code (default), codex = OpenAI Codex'},
         model: {type: 'string', description: 'Optional: the model the coding agent should use, as its CLI names it (Claude Code: opus, sonnet, or a full model id; Codex: e.g. gpt-5.3-codex). Empty = the builder\'s default.'},
+        review: {type: 'string', enum: ['auto', 'claude', 'codex', 'off'], description: 'Who reviews the diff before the PR opens: auto (default: the other installed agent, else the same one fresh), claude, codex, or off.'},
+        review_model: {type: 'string', description: 'Optional model for the reviewer.'},
         markdown: {type: 'string', description: 'Optional: the owner\'s BUILD.md packet as text. Front matter (repo, base, agent, model, builder, paths, max_minutes), "# title", "## Goal", "## Acceptance" bullets. Fields given explicitly override it.'},
         builder: {type: 'string', description: 'Which machine: "any" (default: the first free builder that allows the repo) or a builder name from build_status (e.g. "windows", "mac") when the owner asks for one'},
         title: {type: 'string', description: 'Short PR title, 3-100 characters'},
@@ -399,6 +453,10 @@ export function registerBuilds(api, builds, ownerContext) {
     return head + '\n\n' + (s.builds.length ? s.builds.map(line).join('\n') : 'No builds yet.');
   });
   cmd('buildreview', 'Re-show a pending build packet: /buildreview ID', args => builds.review(builds.find(builds.read(), args)));
+  cmd('buildfrom', 'Start the build a coding packet describes: /buildfrom SLUG (the BUILD.md the Composer saved)', async args => {
+    const out = await builds.fromPacket(args);
+    return out.status === 'awaiting_approval' ? `BUILD REVIEW sent for packet ${out.packet} (build ${out.id}). Approve it with the line in that message.` : `Packet ${out.packet}: build ${out.id} is ${String(out.status).replace(/_/g, ' ')}.`;
+  });
   cmd('buildnote', 'Steer a running build or answer its question: /buildnote ID your message', args => {
     const m = /^([a-f0-9]{16})\s+([\s\S]+)$/.exec(args);
     if (!m) return 'Use: /buildnote ID your message — the id is in the build messages; the text reaches the coding agent as your instruction.';

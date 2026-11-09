@@ -3,6 +3,7 @@ repo: your-org/your-repo
 base: main
 agent: claude
 model: opus
+review: auto
 builder: any
 paths: [src/, tests/]
 max_minutes: 45
@@ -18,5 +19,9 @@ Register it next to the existing routes and keep the style of the file.
 - [ ] a unit test in tests/ covers it
 - [ ] existing tests still pass
 
+## Do not touch
+- requirements or package files (no new dependencies)
+- the authentication middleware
+
 ## Notes
-Do not add dependencies. If the service already has a health route under another name, ask before adding a second one.
+If the service already has a health route under another name, ask before adding a second one.

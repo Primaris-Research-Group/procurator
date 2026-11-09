@@ -26,6 +26,18 @@ A build is no longer a black box. While the agent works:
 
 Config keys: `live` (true; false restores the one-shot run), `wait_minutes`, `progress_s`, `max_rounds`, `models`, `default_models`. Nothing about pushing, path or secret checks changed: the agent still cannot push, and every change is checked before the branch leaves the machine.
 
+## Verified pull requests (worker 1.5.0, Nov 8)
+
+When the agent says it is done, `Job.verify` runs three gates and sends failures back to it as `VERIFICATION:` messages (up to `verify_rounds`, default 2):
+
+1. **Acceptance checks**: the prompt makes the agent write `.procurator/checks/NN-<slug>.sh` for each DONE WHEN item; `run_checks` runs them (timeout `check_timeout_s`); failed or missing → feedback.
+2. **Tests**: the repo's test command from this machine's config; failure → feedback.
+3. **Independent review** (`review_diff`): the other installed agent (`review: auto`), or the one the packet names, reads the staged diff read-only (Claude Code: `--permission-mode default`, Read/Grep/Glob/git diff only; Codex: `--sandbox read-only`) and answers one JSON object (`approve` | `request_changes`, summary, issues). `request_changes` → feedback once; then the review stands.
+
+After the gates: the usual path/secret/size checks, commit, optional **screenshots** (`screenshots`: the repo's `preview` config starts the app, `url_up` waits for it, headless Chrome from `tools.chrome` or a common path captures each `paths` entry into `.procurator/evidence/<id>/`, committed), push, draft PR whose body (`pr_body`) opens with a Verification section. The report carries a size-limited `verification` object (checks, review, rounds, unresolved, screenshots, passed) which the relay validates and the plugin shows.
+
+**Long-horizon packets:** `track_pr` records every PR this builder opens in `prs.json`; `pr_states` re-checks open ones with `gh pr view` every 5 minutes for 21 days and the result rides in `hello` (`prs`); the relay writes `pr_state` / `merged_at` into the build's report, the plugin tells the owner about merges, and packet steps `awaiting merge:<build id>` become eligible.
+
 ## Which builder runs a build
 
 The packet's `builder` field decides:

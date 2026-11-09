@@ -143,7 +143,7 @@ test('tools are main-agent only; commands are owner-only and plain text', async 
   const st = (await commands.find(c => c.name === 'buildstatus').handler({owner: true, args: ''})).text;
   assert.match(st, /Mac \(mac\): online/); assert.match(st, new RegExp(out.id + ' · queued · example-user/demo'));
   assert.ok(!/`/.test(st));
-  assert.deepEqual(commands.map(c => c.name), ['buildapprove', 'buildcancel', 'buildstatus', 'buildreview', 'buildnote', 'buildlog']);
+  assert.deepEqual(commands.map(c => c.name), ['buildapprove', 'buildcancel', 'buildstatus', 'buildreview', 'buildfrom', 'buildnote', 'buildlog']);
 });
 
 test('two builders: the review names who can run it; a named builder is respected', async () => {
@@ -266,4 +266,49 @@ test('0.31.0: live build — the question reaches the owner at once, /buildnote 
   write({status: 'done', pr_url: 'https://github.com/example-user/demo/pull/9', files: ['src/hello.txt'], file_count: 1}); await builds.sweep();
   assert.match(sent.at(-1).message, /BUILD READY/);
   assert.match((await note.handler({owner: true, args: `${a.id} too late`})).text, /notes reach the agent only while it is working/);
+});
+
+test('0.32.0: verified PRs — review fields in the packet, verification in the status view and the BUILD READY message', async () => {
+  const {dir, sent, builds} = fixture(); mac(dir);
+  const parsed = parsePacketMarkdown(BUILD_MD.replace('model: opus', 'model: opus\nreview: codex\nreview_model: gpt-5.3-codex'));
+  assert.equal(parsed.review, 'codex'); assert.equal(parsed.review_model, 'gpt-5.3-codex');
+  assert.throws(() => validatePlan({...args, review: 'gemini'}, builds.builders()), /review must be auto/);
+  const {plan} = validatePlan({...args, review: 'off'}, builds.builders());
+  assert.equal(plan.review, 'off');
+  const a = await builds.prepare({...args, review: 'off'});
+  assert.match(builds.review(builds.find(builds.read(), a.id)), /no independent review/); assert.match(builds.review(builds.find(builds.read(), a.id)), /no second agent reviews it/);
+  const b = await builds.prepare({...args, request_id: 'req-ver-02', title: 'Verified build'});
+  assert.match(builds.review(builds.find(builds.read(), b.id)), /reviewed by the other agent/);
+  builds.approve(b.id, builds.find(builds.read(), b.id).hash);
+  const ver = {checks: [{n: 1, text: 'src/hello.txt exists', status: 'passed', output: ''}, {n: 2, text: 'says hola', status: 'failed', output: 'no hola yet'}],
+    review: {verdict: 'approve', agent: 'codex', model: 'gpt-5.3-codex', summary: 'Small and correct.', issues: [{severity: 'low', file: 'src/hello.txt', text: 'Trailing newline.'}]},
+    rounds: 1, unresolved: 'CHECKS', screenshots: 2, screenshot_note: '', passed: false};
+  fs.writeFileSync(path.join(dir, 'reports', b.id + '.json'), JSON.stringify({id: b.id, updated_at: Date.now(), builder: 'mac', status: 'done', pr_url: 'https://github.com/example-user/demo/pull/12', files: ['src/hello.txt'], file_count: 1, tests: {status: 'passed', command: 'npm test'}, verification: ver}));
+  sent.length = 0; await builds.sweep(); await builds.sweep();
+  const ready = sent.find(m => /BUILD READY/.test(m.message)).message;
+  assert.match(ready, /Acceptance: 1\/2 checks passed — #2 failed/); assert.match(ready, /Review \(Codex, gpt-5.3-codex\): approve — Small and correct\./);
+  assert.match(ready, /Screenshots: 2 in the PR/); assert.match(ready, /1 fix round\(s\) were sent back to Claude Code/); assert.match(ready, /Verification: OPEN ITEMS \(checks\)/);
+  const view = builds.status(b.id).build;
+  assert.equal(view.verification.checks[1].status, 'failed'); assert.equal(view.verification.review.issues[0].file, 'src/hello.txt'); assert.equal(view.verification.passed, false);
+});
+
+test('0.32.0: /buildfrom SLUG prepares the build from the BUILD.md the Composer saved; a missing packet is a clear error', async () => {
+  const {dir, sent, builds} = fixture(); mac(dir);
+  const commands = [];
+  registerBuilds({registerTool: () => {}, registerCommand: c => commands.push(c)}, builds, ctx => { if (!ctx.owner) throw new Error('Only the owner.'); });
+  clearInterval(globalThis[Symbol.for('owner.builds.sweep')]);
+  const from = commands.find(c => c.name === 'buildfrom');
+  assert.match((await from.handler({owner: true, args: 'badge'})).text, /No BUILD\.md saved for "badge"/);
+  assert.match((await from.handler({owner: true, args: '../x'})).text, /Use: \/buildfrom SLUG/);
+  fs.writeFileSync(path.join(dir, 'packets', 'badge.md'), BUILD_MD);
+  const text = (await from.handler({owner: true, args: 'badge'})).text;
+  assert.match(text, /BUILD REVIEW sent for packet badge \(build [a-f0-9]{16}\)/);
+  const review = sent.at(-1).message;
+  assert.match(review, /Title: Add a greeting file/); assert.match(review, /Claude Code \(opus\)/);
+  const job = builds.read().jobs.at(-1);
+  assert.equal(job.mission, 'badge'); assert.equal(job.plan.model, 'opus');
+  assert.match((await from.handler({owner: false, args: 'badge'})).text, /Only the owner/);
+  const again = (await from.handler({owner: true, args: 'badge'})).text;
+  assert.match(again, /BUILD REVIEW sent/, 'the same file re-sends the same review (same request id)');
+  assert.equal(builds.read().jobs.length, 1);
 });

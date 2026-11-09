@@ -339,8 +339,20 @@ class Dashboard:
                         'summary': str(r.get('summary') or '')[:3000], 'message': str(r.get('message') or '')[:600], 'files': r.get('file_count'),
                         'log_tail': str((tests or {}).get('output_tail') or '')[-2000:],
                         'model': str(plan.get('model') or r.get('model') or '')[:64], 'question': str(r.get('question') or '')[:1500] if r.get('status') == 'waiting_owner' else '',
-                        'progress': self.build_progress(jid)})
+                        'progress': self.build_progress(jid), 'verification': self.build_verification(r.get('verification'))})
         return out
+
+    def build_verification(self, v):
+        """Verified PRs (0.32.0): the builder's acceptance checks, independent review and screenshots, size-limited."""
+        if not isinstance(v, dict):
+            return None
+        checks = [{'n': int(c.get('n') or 0), 'text': str(c.get('text') or '')[:300], 'status': str(c.get('status') or '')[:12], 'output': str(c.get('output') or '')[:600]}
+                  for c in (v.get('checks') or [])[:10] if isinstance(c, dict)]
+        rv = v.get('review') if isinstance(v.get('review'), dict) else None
+        review = {'verdict': str(rv.get('verdict') or '')[:20], 'agent': str(rv.get('agent') or '')[:20], 'model': str(rv.get('model') or '')[:64], 'summary': str(rv.get('summary') or '')[:1500],
+                  'issues': [{'severity': str(i.get('severity') or '')[:8], 'file': str(i.get('file') or '')[:200], 'text': str(i.get('text') or '')[:500]} for i in (rv.get('issues') or [])[:12] if isinstance(i, dict)]} if rv else None
+        return {'checks': checks, 'review': review, 'rounds': int(v.get('rounds') or 0), 'unresolved': str(v.get('unresolved') or '')[:20], 'screenshots': int(v.get('screenshots') or 0),
+                'screenshot_note': str(v.get('screenshot_note') or '')[:300], 'passed': v.get('passed') is True}
 
     def build_progress(self, jid, n=40):
         """Live builds (0.31.0): the relay appends what the agent is doing to progress/<id>.jsonl; the last n lines, newest last."""
@@ -821,6 +833,9 @@ class Dashboard:
                           '<button class="%s" data-post="/packets/%s/state" data-body=\'{"action":"%s"}\' %s>%s</button>' % (cls, esc(slug), a, ('data-confirm="%s"' % esc(c)) if c else '', label) for a, label, cls, c in acts)
         if st == 'done' and m.get('done_proposal'):
             buttons = ('<div class="msg ok" style="width:100%%">The assistant reports every done-when item has evidence: %s</div>' % esc('; '.join('%d: %s' % (x['item'], ', '.join(x['refs'])) for x in m['done_proposal']['items']))) + buttons
+        if m.get('kind') == 'coding' and (self.state / 'procurator-build' / 'packets' / (slug + '.md')).exists():
+            # Spec interview (0.32.0): the Composer saved this packet's BUILD.md for the builder; the owner starts it from Telegram.
+            buttons = ('<div class="msg ok" style="width:100%%">This packet carries a BUILD.md. Start the build (BUILD REVIEW, then approval) from Telegram: <span class="tg">/buildfrom %s</span></div>' % esc(slug)) + buttons
         spend = ('<div class="sub">spent %s of %s</div>%s' % (A.fmt_usd(m['spent_usd']), A.fmt_usd(m['budget_usd']), A.bar((m['spent_usd'] or 0) / m['budget_usd']))) if m.get('budget_usd') else '<div class="sub">spent %s · no budget</div>' % A.fmt_usd(m['spent_usd'])
         head = ('<section class="card wide"><div class="row"><h2 style="margin:0">%s</h2>%s<span class="chip">%s</span></div><div class="big" style="font-size:20px;margin-top:4px">%s</div><div class="sub">%s</div>'
                 '<p style="margin:8px 0 4px"><b>Goal:</b> %s</p>%s%s<div class="actions">%s</div>%s</section>') % (
@@ -879,6 +894,19 @@ class Dashboard:
         live = ''
         if b['question']:
             live += '<div class="msg warn" style="margin-top:12px"><b>Waiting for you:</b> %s<div class="sub">Answer in Telegram: <span class="tg">/buildnote %s your answer</span></div></div>' % (esc(b['question']), esc(b['id']))
+        v = b.get('verification')
+        if v:
+            mark = {'passed': 'ok', 'failed': 'bad', 'timed_out': 'warn', 'missing': 'warn'}
+            checks = ''.join('<tr><td>%d</td><td>%s</td><td>%s</td><td class="small">%s</td></tr>' % (c['n'], esc(c['text']), A.chip(c['status'], mark.get(c['status'], '')), esc(c['output'][-200:])) for c in v['checks'])
+            rv = v['review']
+            review = ('<p><b>%s</b> by %s%s. %s</p>%s' % (esc(rv['verdict'].replace('_', ' ')), esc({'claude': 'Claude Code', 'codex': 'Codex'}.get(rv['agent'], 'reviewer')), (' (' + esc(rv['model']) + ')') if rv['model'] else '', esc(rv['summary']),
+                      ('<ul>%s</ul>' % ''.join('<li><b>%s</b> %s%s</li>' % (esc(i['severity']), ('<code>%s</code> — ' % esc(i['file'])) if i['file'] else '', esc(i['text'])) for i in rv['issues'])) if rv['issues'] else '')) if rv else '<p class="sub">Review was off for this build.</p>'
+            live += ('<h2 style="margin-top:12px">Verification %s</h2>%s'
+                     '<h3>Acceptance checks</h3>%s<h3>Independent review</h3>%s<p class="sub">Screenshots in the PR: %d%s%s</p>') % (
+                A.chip('all gates passed' if v['passed'] else 'open items', 'ok' if v['passed'] else 'warn'),
+                ('<p class="sub">%d fix round(s) were sent back to the agent.</p>' % v['rounds']) if v['rounds'] else '',
+                ('<table><tr><th>#</th><th>Item</th><th>Check</th><th>Output</th></tr>%s</table>' % checks) if checks else '<p class="sub">No acceptance checks (the packet had no Done-when items).</p>',
+                review, v['screenshots'], (' · ' + esc(v['screenshot_note'])) if v['screenshot_note'] else '', (' · unresolved: ' + esc(v['unresolved'].lower())) if v['unresolved'] else '')
         if b['progress']:
             icon = {'tool': '&#9656;', 'say': '', 'question': '&#10067;', 'note': 'You: ', 'result': '&#10004; ', 'info': '&#8505; '}
             rows_ = ''.join('<div class="pl"><span class="sub">%s</span> %s%s%s</div>' % (esc(when(e["at"])) if e["at"] else "", icon.get(e['t'], ''), ('<b>%s</b> ' % esc(e['name'])) if e['t'] == 'tool' and e['name'] else '', esc(e['text'])) for e in b['progress'])

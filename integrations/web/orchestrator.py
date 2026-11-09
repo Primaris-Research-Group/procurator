@@ -58,7 +58,7 @@ KIND_RULES = {
     'engineering': 'Engineering packet: research and calculation notes in Drive, or builds as in coding packets; state assumptions and units.',
 }
 
-AWAITING = re.compile(r'^(approval:(call|mail|web|calendar|purchase):[A-Za-z0-9._-]{4,40}|build:[a-f0-9]{16}|owner_answer:[A-Za-z0-9._:-]{1,48}'
+AWAITING = re.compile(r'^(approval:(call|mail|web|calendar|purchase):[A-Za-z0-9._-]{4,40}|build:[a-f0-9]{16}|merge:[a-f0-9]{16}|owner_answer:[A-Za-z0-9._:-]{1,48}'
                       r'|watch:[A-Za-z0-9._:-]{1,48}|date:\d{4}-\d{2}-\d{2}|builder)$')
 
 
@@ -76,6 +76,8 @@ def awaiting_line(awaiting):
         return 'Approve the %s %s in Telegram: %s %s … (the full line is in its review message)' % (what, ident, cmd, ident)
     if a.startswith('build:'):
         return 'Approve build %s in Telegram: /buildapprove %s … (the full line is in the BUILD REVIEW message)' % (a[6:], a[6:])
+    if a.startswith('merge:'):
+        return 'Waiting for the pull request of build %s to be merged (merge it on GitHub when you are happy with it)' % a[6:]
     if a.startswith('owner_answer:'):
         return 'Answer question %s in Telegram or on the dashboard' % a[13:]
     if a.startswith('watch:'):
@@ -149,7 +151,8 @@ ROUTING_RULES = '''HOW TO RUN A STEP
 - When you send a review for their approval, mark the step waiting_for_approval with awaiting = approval:call:<call id> | approval:mail:<draft id> | approval:web:<task id> | approval:calendar:<id> | build:<build id>. For a question: waiting_for_owner with awaiting = owner_answer:<question id>. For an email you wait on: add a mission_watch and keep the step pending with awaiting = watch:<watch id>; for a date: awaiting = date:YYYY-MM-DD.
 - When it finishes, mark it done with up to 4 evidence references (confirmation number, message ID, call ID, Drive link, PR link).
 - If it fails: mission_thread action=fail with the reason; transient=true for a page reload, busy builder or provider 5xx (it is retried once on the next session), false otherwise (it waits for them).
-- For a build step, pass mission and step (THREAD/sN) to build_prepare: the PR link is written back to the step automatically.
+- For a build step, pass mission and step (THREAD/sN) to build_prepare: the PR link is written back to the step automatically. If the packet has a BUILD.md file, pass its full text as markdown (it carries repo, model, review, paths, acceptance); otherwise build repo/title/goal/acceptance from the step.
+- Several build steps in one packet (long-horizon work): each build starts from the base branch as it is THEN, so a step that builds on an earlier step's code must wait for that pull request to be merged. When a build step is done (PR open), mark the next build step waiting_for_owner with awaiting = merge:<that build id> unless the packet says the steps are independent; it becomes eligible by itself once the owner merges (the builder reports merges). In that later build's goal, include a short "Previous steps" list: each earlier PR link and what it did, and anything the journal learned that the agent must know.
 - When every done-when item has evidence, call mission_propose_done with the evidence for each item; the owner closes the packet.'''
 
 
