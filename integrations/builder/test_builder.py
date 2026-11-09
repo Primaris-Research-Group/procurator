@@ -315,6 +315,17 @@ class BuilderTest(unittest.TestCase):
         self.assertIn('![/](https://github.com/example-user/demo/blob/procurator/%s/.procurator/evidence/%s/01.png?raw=true)' % (i, i), body)
         self.assertFalse(subprocess.run(['pgrep', '-f', 'http.server 18731'], capture_output=True).stdout, 'the preview server is stopped')
 
+    def test_a_config_saved_by_an_old_worker_loses_the_removed_codex_flag(self):
+        cfg = dict(self.cfg, codex_args=['--full-auto', '--color', 'never']); json.dump(cfg, open(self.t('builder', 'config.json'), 'w'))
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('w2', WORKER); w = importlib.util.module_from_spec(spec)
+        old = os.environ.get('PROCURATOR_BUILDER_HOME'); os.environ['PROCURATOR_BUILDER_HOME'] = self.t('builder')
+        try:
+            spec.loader.exec_module(w)
+        finally:
+            os.environ.pop('PROCURATOR_BUILDER_HOME') if old is None else os.environ.__setitem__('PROCURATOR_BUILDER_HOME', old)
+        self.assertNotIn('--full-auto', w.load_config()['codex_args']); self.assertEqual(w.load_config()['codex_args'], w.DEFAULT_CONFIG['codex_args'])
+
     def test_model_must_be_on_the_builders_list_when_one_is_set(self):
         import importlib.util
         spec = importlib.util.spec_from_file_location('w', WORKER); w = importlib.util.module_from_spec(spec); spec.loader.exec_module(w)

@@ -24,7 +24,7 @@ Standard library only (macOS python3 3.8+, Ubuntu python3).
 """
 import argparse, errno, fcntl, fnmatch, json, os, queue, re, shlex, shutil, signal, socket, subprocess, sys, tempfile, threading, time
 
-VERSION = '1.5.0'  # 1.5.0 (Nov 8): verified PRs (acceptance checks, cross-model review, screenshots); 1.4.0: live builds; 1.3.0: vitals
+VERSION = '1.5.1'  # 1.5.1 (Nov 9): drop a stale --full-auto from saved configs; 1.5.0 (Nov 8): verified PRs (acceptance checks, cross-model review, screenshots); 1.4.0: live builds; 1.3.0: vitals
 HOME = os.path.expanduser('~')
 ROOT = os.environ.get('PROCURATOR_BUILDER_HOME', os.path.join(HOME, 'Procurator', 'builder'))
 CONFIG = os.path.join(ROOT, 'config.json')
@@ -128,6 +128,10 @@ def load_config():
                 cfg[k].update(v)
             else:
                 cfg[k] = v
+    # A config saved by an older worker carries that version's agent flags; Codex 0.166 rejects --full-auto (Nov 9: builds
+    # failed with "unexpected argument '--full-auto'"), so stale flags fall back to this version's defaults.
+    if '--full-auto' in (cfg.get('codex_args') or []):
+        cfg['codex_args'] = list(DEFAULT_CONFIG['codex_args'])
     if cfg.get('path'):
         os.environ['PATH'] = cfg['path']
     return cfg
