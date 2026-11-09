@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PROCURATOR builder for the owner's Windows PC — run INSIDE Ubuntu on WSL2, as your normal Ubuntu user.
-# Generated 2026-11-08 with worker 1.3.0 (source: integrations/builder; regenerate: python3 integrations/builder/bundle.py).
+# Generated 2026-11-09 with worker 1.3.0 (source: integrations/builder; regenerate: python3 integrations/builder/bundle.py).
 #   bash install-procurator-builder-wsl.sh            install or update (keeps your allowed repos)
 #   bash install-procurator-builder-wsl.sh --remove   stop the builder and remove the Windows scheduled task
 # What it does:

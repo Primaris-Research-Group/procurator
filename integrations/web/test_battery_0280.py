@@ -240,7 +240,7 @@ class Battery(unittest.TestCase):
         self.assertFalse((Path(self.tmp.name) / 'library' / 'files' / c['sha256']).exists())
 
     def test_library_notes_pinning_and_limits(self):
-        n = self.b.call('library_note', {'text': 'Primaris Health Institute: non-profit for AI-assisted primary care workflows. Pilot sites in Q1.',
+        n = self.b.call('library_note', {'text': 'Primaris Research Group: non-profit for AI-assisted primary care workflows. Pilot sites in Q1.',
                                          'title': 'Primaris context', 'collection': 'context', 'pinned': '1'}, True)
         self.assertTrue(n['pinned'])
         ctx = self.b.call('library_pinned', {}, False)['context']

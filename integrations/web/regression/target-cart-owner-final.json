@@ -2,7 +2,7 @@
  "name": "target-cart-owner-final",
  "site": "target.com",
  "start_url": "https://www.target.com/",
- "intent": "Add one known item to the cart and reach checkout; Target is owner_final (he presses Place order).",
+ "intent": "Add one known item to the cart and reach checkout; Target is owner_final (the owner presses Place order).",
  "key_nodes": [
   {
    "id": "item",

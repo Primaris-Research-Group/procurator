@@ -96,4 +96,4 @@ Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE). OpenClaw is MIT-licensed (`licenses/`).
 
-PROCURATOR is a project of Primaris Health Institute, a medical AI research non-profit. Physicians interested in the research programme: see the website's recruitment section.
+PROCURATOR is built by Primaris Research Group (PRG). Physicians interested in the research programme: see the website's recruitment section.

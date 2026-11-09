@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PROCURATOR home browser for the owner's Windows PC — run INSIDE Ubuntu on WSL2, as your normal Ubuntu user.
-# Generated 2026-11-08 with browser worker 1.1.2 (source: integrations/browser-worker; regenerate: python3 integrations/browser-worker/bundle.py).
+# Generated 2026-11-09 with browser worker 1.1.2 (source: integrations/browser-worker; regenerate: python3 integrations/browser-worker/bundle.py).
 #   bash install-procurator-browser-wsl.sh            install or update (keeps your site profiles and sign-ins)
 #   bash install-procurator-browser-wsl.sh --remove   stop it and remove the Windows scheduled task (profiles are kept)
 # What it does:

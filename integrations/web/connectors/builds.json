@@ -3,7 +3,7 @@
  "id": "builds",
  "version": "1.0.1",
  "title": "Code builds on the owner's computer",
- "description": "Task packets become draft pull requests on his Mac or PC after /buildapprove.",
+ "description": "Task packets become draft pull requests on the owner's Mac or PC after /buildapprove.",
  "class": "general",
  "source": "core",
  "plugin": "procurator-web",

@@ -3,7 +3,7 @@
  "id": "phone",
  "version": "1.0.1",
  "title": "Phone calls (Twilio)",
- "description": "Outbound calls after /callapprove; listen-in; call reports. phone_press_keys: the phone agent presses menu keys inside a call he already approved (0.29.0: declared so the deny-by-default gate lets it run).",
+ "description": "Outbound calls after /callapprove; listen-in; call reports. phone_press_keys: the phone agent presses menu keys inside a call the owner already approved (0.29.0: declared so the deny-by-default gate lets it run).",
  "class": "general",
  "source": "core",
  "plugin": "procurator-voice",

@@ -2,7 +2,7 @@
  "manifest_version": 2,
  "id": "library",
  "version": "0.1.0",
- "title": "Reference library (his uploads)",
+ "title": "Reference library (the owner's uploads)",
  "description": "Documents, notes and earlier AI chats the owner chose to upload; searched by the assistant and by packets that reference them. Read-only for the assistant.",
  "class": "general",
  "source": "core",

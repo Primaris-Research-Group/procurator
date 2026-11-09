@@ -338,7 +338,7 @@ def build_vevent(uid, summary, start, end, location=None, description=None, all_
     else:
         s = 'DTSTART:' + utc_stamp(start)
         e = 'DTEND:' + utc_stamp(end)
-    lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Primaris Health Institute//PROCURATOR//EN', 'BEGIN:VEVENT', 'UID:' + uid,
+    lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Primaris Research Group//PROCURATOR//EN', 'BEGIN:VEVENT', 'UID:' + uid,
              'DTSTAMP:' + now, s, e, fold('SUMMARY:' + escape(summary)[:300])]
     if location:
         lines.append(fold('LOCATION:' + escape(location)[:300]))

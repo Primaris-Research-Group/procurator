@@ -30,7 +30,7 @@ OAuth client asks only for **sensitive** scopes (calendar, contacts.readonly, ta
 | `accounts_list` | read | Which accounts and services are connected (never a password) |
 | `calendar_apple_events` | read | iCloud events for a range (default next 7 days), optionally one calendar |
 | `contacts_apple_search` | read | iCloud contacts by name, phone digits or email (cached 10 min) |
-| `calendar_apple_create_event` | own_write | One event in his own iCloud calendar, no attendees |
+| `calendar_apple_create_event` | own_write | One event in the owner's own iCloud calendar, no attendees |
 
 Mail tools are unchanged (mail plugin); the mail broker reads the iCloud credentials from `/var/lib/procurator-mail/icloud.json` when the
 operator wrote it, otherwise from the Accounts tab's copy `secrets/accounts/icloud-mail.json`.

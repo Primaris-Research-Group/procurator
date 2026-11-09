@@ -1,9 +1,9 @@
 # PROCURATOR builders (code builds on the owner's Windows PC and Mac)
 
-Built Nov 5, 2026. PROCURATOR writes a build packet, and the owner approves the exact packet in Telegram. A builder then runs Claude Code or Codex using his own subscriptions and opens a **draft** pull request. The builders are:
+Built Nov 5, 2026. PROCURATOR writes a build packet, and the owner approves the exact packet in Telegram. A builder then runs Claude Code or Codex using their own subscriptions and opens a **draft** pull request. The builders are:
 
-- **windows**: his always-on desktop (Ryzen 5, 16 GB), running inside WSL2 Ubuntu
-- **mac**: his Mac
+- **windows**: the owner's always-on desktop (Ryzen 5, 16 GB), running inside WSL2 Ubuntu
+- **mac**: the owner's Mac
 
 Nothing is merged or deployed automatically.
 
@@ -53,7 +53,7 @@ The BUILD REVIEW shows which machines can run the build and whether they are onl
 |---|---|---|
 | Builder | `~/Procurator/builder/worker.py` | Background loop and CLI: `check`, `add-repo`, `remove-repo`, `list` |
 | Builder | `~/Procurator/builder/config.json` | Name and label, allowed repos (branch, test command, agents), tool paths, relay command |
-| Mac | `~/Library/LaunchAgents/org.primaris.procurator-builder.plist` | Keeps the Mac worker running while he is logged in |
+| Mac | `~/Library/LaunchAgents/org.primaris.procurator-builder.plist` | Keeps the Mac worker running while the owner is logged in |
 | Windows | Task Scheduler entry "PROCURATOR builder" | At sign-in, runs `wsl.exe … worker.py run` hidden and restarts it if it stops. Fallback if Task Scheduler refuses: a hidden starter in the Startup folder |
 | Builder | `~/Procurator/builds/<id>/` | Clone, `prompt.md`, `agent.log`, `tests.log`, `pr-body.md` (kept 7 days) |
 | Droplet | `/opt/procurator/bin/build-relay.py` | Forced command, one key line per builder |

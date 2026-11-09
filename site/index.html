@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PROCURATOR by PHI — the administrative agent that acts only with your approval</title>
+<title>PROCURATOR by PRG — the administrative agent that acts only with your approval</title>
 <meta name="description" content="PROCURATOR is a self-hosted autonomous assistant for professionals. It handles email, calls, web errands, bookings and long projects, and cannot send, dial, submit, buy or book anything you have not approved.">
-<meta property="og:title" content="PROCURATOR by PHI">
+<meta property="og:title" content="PROCURATOR by PRG">
 <meta property="og:description" content="Your administrative work, done end to end. Every action that commits you waits for your approval.">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -213,6 +213,14 @@ pre .c{color:var(--peri)}
 .install-cmd{margin-top:28px}
 
 /* ---------- everything ---------- */
+/* highlights: four cards */
+.hl{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:30px}
+.hlc{background:var(--white);border:1px solid var(--line);border-radius:var(--r-lg);padding:26px 28px}
+.hlc h3{font-family:var(--display);font-size:20px;margin:0 0 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hlc p{margin:0 0 10px;font-size:15.5px;line-height:1.55}
+.hlc .hlm{font-size:13px;color:var(--muted);margin:12px 0 0;padding-top:10px;border-top:1px dashed var(--line)}
+.hlc.x{border-color:var(--saffron);box-shadow:0 0 0 3px rgba(247,181,41,.18) inset}
+@media (max-width:900px){.hl{grid-template-columns:1fr}}
 .cols{columns:3;column-gap:40px;margin-top:30px}
 @media (max-width:1000px){.cols{columns:2}}
 @media (max-width:640px){.cols{columns:1}}
@@ -276,12 +284,12 @@ footer li{margin:6px 0}
 
 <header class="nav" aria-label="Site">
   <div class="wrap">
-    <a class="brand" href="#top" aria-label="PROCURATOR by PHI, home">
+    <a class="brand" href="#top" aria-label="PROCURATOR by PRG, home">
       <svg class="seal" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#FFB224"/><path d="M14 25l6 6 14-14" fill="none" stroke="#1C2260" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>PROCURATOR <small>by PHI</small></span>
+      <span>PROCURATOR <small>by PRG</small></span>
     </a>
     <nav class="nav-links" aria-label="Sections">
-      <a href="#why">Why</a><a href="#approvals">Approvals</a><a href="#compare">Compare</a><a href="#editions">Editions</a><a href="#install">Install</a><a href="#everything">Features</a><a href="#research">Research</a><a href="#physicians">Physicians</a>
+      <a href="#highlights">Highlights</a><a href="#why">Why</a><a href="#approvals">Approvals</a><a href="#compare">Compare</a><a href="#editions">Editions</a><a href="#install">Install</a><a href="#everything">Features</a><a href="#research">Research</a><a href="#physicians">Physicians</a>
       <a class="btn btn-primary" data-config="github" href="https://github.com/" rel="noopener">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg>
         GitHub
@@ -341,6 +349,36 @@ footer li{margin:6px 0}
     <small>Counts from the 0.29.0 source, November 2026. Tool risk classes are declared in connector manifests; undeclared tools do not run.</small></p>
   </div>
 </div>
+
+<!-- ===== HIGHLIGHTS ===== -->
+<section id="highlights" class="band-paper2">
+  <div class="wrap">
+    <p class="eyebrow">Four things people ask about first</p>
+    <h2 class="measure">Browsing that finishes the job. Health logistics with consent. Code that ships as a pull request.</h2>
+    <div class="hl">
+      <div class="hlc">
+        <h3>Web browsing that completes tasks</h3>
+        <p>A cloud browser or your own PC's Chrome, with per-site rules. It reads the page the way you would, checks it is still on the right page before every step, fills forms from a private vault, and never submits twice. Signed-in sites use logins you perform yourself. Every run leaves a trace you can replay, and graded test batteries over real consumer sites keep it honest.</p>
+        <p class="hlm">Research, autonomous and exact modes · page-vision checks · playbooks · weekly metrics</p>
+      </div>
+      <div class="hlc">
+        <h3>AI health coach <span class="pill opt">optional · 18+</span></h3>
+        <p>A wellness coach you switch on yourself: goals, a calorie and activity plan built from published guidance with hard safety floors, a daily energy balance from your food log and Apple Health, and reminders with fixed wording that pause when anything looks off. Blood pressure, sleep, stress, waist and mood tracked alongside. Logistics and coaching, never diagnosis.</p>
+        <p class="hlm">Published clinical guidance cited in the plan · physician review of the method in progress</p>
+      </div>
+      <div class="hlc">
+        <h3>Pharmacy and patient-portal integrations <span class="pill opt">optional</span></h3>
+        <p>Patient portals over SMART on FHIR: read selected records with provenance, book, cancel and reschedule, bound to one patient at one institution. Pharmacy refills matched exactly by prescription, store and patient, with "requested" kept distinct from "confirmed". Every effect runs under a consent grant with explicit limits and lands as a private receipt.</p>
+        <p class="hlm">Built and tested against synthetic EHR and pharmacy services; live vendor sandboxes as access is granted</p>
+      </div>
+      <div class="hlc x">
+        <h3>Coding orchestrator <span class="pill x">PROCURATOR‑X</span></h3>
+        <p>Write what you want built as a plain Markdown packet and approve once in Telegram. A builder on your own Mac or PC runs Claude Code or Codex on your subscription, inside a fresh clone with push disabled, and opens a <b>draft pull request</b>. Nothing merges or deploys by itself.</p>
+        <p class="hlm">Builders pull work over a restricted key · secret and path checks before any push · Builds tab on the dashboard · <b>Next (0.31):</b> choose the orchestrator model per packet, follow the build live and answer its questions from Telegram</p>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ===== WHY ===== -->
 <section id="why">
@@ -625,13 +663,13 @@ curl -fsSL <span data-config="installurl">https://raw.githubusercontent.com/Prim
     <div>
       <p class="eyebrow">Ongoing research</p>
       <h2 class="measure">PROCURATOR is a research instrument as much as a product</h2>
-      <p class="lede" style="margin-top:18px">PHI is a non-profit studying how autonomous agents can take administrative load off clinicians and other professionals without taking decisions away from them. The code is the experiment; the batteries are the measurements.</p>
+      <p class="lede" style="margin-top:18px">Primaris Research Group (PRG) builds PROCURATOR to study how autonomous agents can take administrative load off clinicians and other professionals without taking decisions away from them. The code is the experiment; the batteries are the measurements.</p>
       <ul class="themes">
         <li><b>Approval-bound agency</b><span>Can an agent be useful when every consequential action is bound to a human's exact approval? We measure completion, approvals per task and cost per task across live sites, phone menus and portals.</span></li>
         <li><b>Consent-scoped health logistics</b><span>Grants with explicit limits, one effect per operation, "requested" kept distinct from "confirmed", and data labels enforced at every outbound path. Synthetic EHR and pharmacy services make the whole flow testable.</span></li>
         <li><b>Autonomous web browsing benchmarks</b><span>Graded batteries over consumer sites on cloud and home browsers, offline fixtures from real failures, and a regression set with a fixed judge.</span></li>
         <li><b>Small models for clinical documentation</b><span>Companion work on local, small-model documentation assistants and the verification needed before a note is trusted.</span></li>
-        <li><b>Primary-care workflow optimisation</b><span>Multi-arm studies of AI-augmented primary care workflows, from pre-visit preparation to follow-up.</span></li>
+        <li><b>Orchestrated coding under approval</b><span>Can a plain-language packet become a reviewable pull request on the owner's own machine, with one exact approval and a live view of the work? PROCURATOR‑X is the test bed.</span></li>
       </ul>
     </div>
 
@@ -696,9 +734,9 @@ curl -fsSL <span data-config="installurl">https://raw.githubusercontent.com/Prim
       <ul><li><a data-config="github" href="https://github.com/" rel="noopener">Source and releases</a></li><li><a data-config="github" href="https://github.com/" rel="noopener">Security model</a></li><li><a href="#everything">Feature list</a></li></ul>
     </div>
     <div>
-      <b>PHI</b>
+      <b>Primaris Research Group</b>
       <ul><li><a href="#research">Research</a></li><li><a href="#physicians">Physician recruitment</a></li><li><a data-config="mailto" href="mailto:research@example.org">Contact the research team</a></li></ul>
-      <p style="margin-top:18px;font-size:13px">© 2026 PHI. Open-source software under its repository license.</p>
+      <p style="margin-top:18px;font-size:13px">© 2026 Primaris Research Group (PRG). Open-source software under its repository license.</p>
     </div>
   </div>
 </footer>
@@ -753,7 +791,7 @@ form.addEventListener('submit', async e => {
     }
   }
   const body = ['Name: ' + data.name, 'Email: ' + data.email, 'Specialty: ' + (data.specialty||''), 'Stage: ' + data.stage, 'Interests: ' + data.interests.join(', '), 'Availability: ' + data.hours, '', data.note || ''].join('\n');
-  location.href = 'mailto:' + CONFIG.mailto + '?subject=' + encodeURIComponent('Physician research interest — PROCURATOR by PHI') + '&body=' + encodeURIComponent(body);
+  location.href = 'mailto:' + CONFIG.mailto + '?subject=' + encodeURIComponent('Physician research interest — PROCURATOR by PRG') + '&body=' + encodeURIComponent(body);
   box.className = 'msgbox ok'; box.textContent = 'Your email app should open with the details filled in.';
 });
 </script>
