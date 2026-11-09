@@ -2,6 +2,11 @@
 
 All notable changes to PROCURATOR. The project was built as one owner's assistant from October 2026 and opened as a public tree at 0.30.0; earlier entries are condensed from the internal release notes.
 
+## 0.32.2 — 2026-11-09 — ChatGPT chats read whole, in order
+
+- **Chats are read once, whole, and paged from that copy.** `read_chat` used to reopen the chat for every page; ChatGPT loads long chats lazily, so each page came from a different rendering and the agent saw overlapping or missing turns ("the reader returned overlapping portions"). The reader now takes the conversation from the same data the ChatGPT page loads for itself (no extra requests, nothing typed), keeps every turn of the current branch in order with its date, and the server keeps that copy for an hour: every page has the same sha256 and follows on exactly. `refresh: true` re-reads a chat the owner has added to. When the conversation data is unavailable, the page is scrolled until the turn count stops changing, and an incomplete read is flagged instead of presented as whole.
+- **Transcripts start with a header**: title, started, last activity, number of turns, and the **files attached in the chat** (by name; their contents are not in the transcript, so the agent looks for them in project files, email or Drive instead of guessing).
+
 ## 0.32.1 — 2026-11-09 — saved emails are readable
 
 - **Saved emails (.eml) in Drive or attachments are decoded.** They were read as plain text, so a base64 or quoted-printable body came through unreadable. The document reader now parses them: headers, the body (plain text, or HTML converted), forwarded/attached emails in full, Word and text attachments inline, other attachments listed. Outlook `.msg` files get a clear note (forward the email or save it as .eml).

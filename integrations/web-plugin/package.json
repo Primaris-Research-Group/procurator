@@ -1,6 +1,6 @@
 {
   "name": "openclaw-plugin-procurator-web",
-  "version": "0.32.0",
+  "version": "0.32.2",
   "private": true,
   "type": "module",
   "files": [

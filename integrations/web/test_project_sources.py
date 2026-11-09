@@ -107,6 +107,35 @@ class Tests(unittest.TestCase):
         with patch.object(self.p,'run',return_value=out) as runner:
             self.b.call('project_chat',{'service':'chatgpt','project_name':'Legal Matter','chat_title':'Draft','max_chars':500})
         self.assertEqual(runner.call_args.kwargs['chat_title'],'Draft');self.assertEqual(self.p.acts,0)
+    def test_chat_is_read_once_whole_and_every_page_comes_from_the_same_copy(self):
+        # 0.32.2: paging used to re-open and re-render the chat, so pages overlapped or skipped turns ("overlapping portions").
+        self.b.call('project_connect',{'service':'chatgpt'},True);self.b.call('project_ready',{'service':'chatgpt'},True)
+        with self.b.db() as db:db.execute('UPDATE project_sources SET updated=?',(time.time()-10,))
+        self.b.projects.open('chatgpt')
+        chat='https://chatgpt.com/c/6900aaaa-1111-2222-3333-444455556666'
+        text='Chat: Analyze GME Email\nTurns: 120\n\n'+'\n\n'.join('[%s · 2026-11-0%d 12:00 UTC]\nturn %03d'%('User' if i%2==0 else 'Assistant',1+i%8,i) for i in range(120))
+        att=[{'name':'GME Nov 2.eml','mime_type':'message/rfc822','size':5000}]
+        out={'ok':True,'chat':{'title':'Analyze GME Email','chat_url':chat,'text':text,'turns':120,'attachments':att,'extraction':'conversation_data','complete':True,'created':'2026-11-01 12:00 UTC','updated':'2026-11-08 12:00 UTC'}}
+        with patch.object(self.p,'run',return_value=out) as runner:
+            first=self.b.call('project_chat',{'service':'chatgpt','project_name':'Legal Matter','chat_title':'Analyze GME Email','max_chars':1000})
+        self.assertEqual(runner.call_count,1);self.assertIs(runner.call_args.kwargs['full'],True);self.assertNotIn('offset',runner.call_args.kwargs)
+        c=first['chat'];self.assertEqual(first['status'],'chat_read');self.assertEqual(c['turns'],120);self.assertEqual(c['attachments'],att)
+        self.assertTrue(c['complete']);self.assertEqual(c['extraction'],'conversation_data');self.assertEqual(c['served_from'],'read just now')
+        pages=[c['content']];sha=c['sha256']
+        with patch.object(self.p,'run',side_effect=AssertionError('the browser must not reopen for later pages')):
+            while c['next_offset'] is not None:
+                r=self.b.call('project_chat',{'service':'chatgpt','project_name':'Legal Matter','chat_title':'Analyze GME Email','offset':c['next_offset'],'expected_sha256':sha,'max_chars':1000})
+                c=r['chat'];self.assertEqual(c['sha256'],sha);self.assertEqual(c['served_from'],'copy read at most an hour ago');pages.append(c['content'])
+            self.assertEqual(''.join(pages),text)                                   # contiguous, no overlap, nothing missing
+            by_link=self.b.call('project_chat',{'service':'chatgpt','chat_url':chat,'max_chars':1000})
+        self.assertEqual(by_link['chat']['sha256'],sha)                              # the same copy, asked for by its link
+        with patch.object(self.p,'run',return_value=out) as runner:
+            self.b.call('project_chat',{'service':'chatgpt','chat_url':chat,'refresh':True})
+        self.assertEqual(runner.call_count,1)
+        with self.assertRaises(ValueError):self.b.call('project_chat',{'service':'chatgpt','chat_url':chat,'refresh':'yes'})
+        with patch.object(self.p,'run',side_effect=AssertionError('no browser for a stale offset')):
+            stale=self.b.call('project_chat',{'service':'chatgpt','project_name':'Legal Matter','chat_title':'Another chat','offset':500,'expected_sha256':'c'*64})
+        self.assertEqual(stale['status'],'file_changed')
     def test_chat_read_failure_details_reach_the_agent(self):
         self.b.call('project_connect',{'service':'chatgpt'},True);self.b.call('project_ready',{'service':'chatgpt'},True)
         with self.b.db() as db:db.execute('UPDATE project_sources SET updated=?',(time.time()-10,))

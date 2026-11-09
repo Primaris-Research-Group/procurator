@@ -112,13 +112,14 @@ class Extractor:
                 return None  # interrupted by a restart; re-capture and resume
             return record
 
-    def store_text(self, key, text, method):
-        """Cache text that needs no extraction (a Google Doc exported as text, a CSV, a .txt file) under the same index."""
+    def store_text(self, key, text, method, extra=None):
+        """Cache text that needs no extraction (a Google Doc exported as text, a CSV, a .txt file, a chat transcript) under the
+        same index. extra: small metadata kept with the record (a chat's title, url, turns, attached file names)."""
         data = text.encode('utf-8')
         if len(data) > MAX_BYTES:
             raise ValueError('The document text is larger than 20 MB.')
         sha = hashlib.sha256(data).hexdigest()
-        record = {'status': 'done', 'method': method, 'text': text}
+        record = {**(extra or {}), 'status': 'done', 'method': method, 'text': text}
         with self.lock:
             index = self._read('index.json', {})
             index = {k: v for k, v in index.items() if time.time() - v['t'] <= CACHE_TTL}

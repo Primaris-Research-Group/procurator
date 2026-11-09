@@ -579,18 +579,50 @@ async function projectChats(page,service,deadline){
   }
   return chats;
 }
-// Collects every turn, including text deferred by content-visibility, via the DOM.
+// 0.32.2 (Nov 9, "the reader returned overlapping portions"): ChatGPT draws only part of a long conversation and loads older
+// turns as you scroll, so every rendered read could differ. When the chat page opens, ChatGPT itself downloads the whole
+// conversation (GET /backend-api/conversation/<id>); the runner reads that response passively (no extra request, no click)
+// and walks the visible branch from current_node back to the root. Files the owner attached are listed by name.
+const CONVO_PATH=/^\/backend-api\/conversation\/[0-9a-fA-F-]{8,100}$/;
+function utc(t){const n=Number(t);return Number.isFinite(n)&&n>0?new Date(n*1000).toISOString().slice(0,16).replace('T',' ')+' UTC':'';}
+function conversationTurns(data){
+  const map=data&&typeof data.mapping==='object'&&data.mapping?data.mapping:{};
+  const chain=[],seen=new Set();
+  for(let id=data?.current_node;id&&map[id]&&!seen.has(id)&&chain.length<5000;id=map[id].parent){seen.add(id);chain.push(map[id]);}
+  chain.reverse();
+  const turns=[],attachments=[];
+  for(const n of chain){
+    const m=n&&n.message;if(!m)continue;
+    const role=m.author&&m.author.role;if(role!=='user'&&role!=='assistant')continue;
+    const md=m.metadata||{};if(md.is_visually_hidden_from_conversation)continue;
+    const c=m.content||{};
+    if(!['text','multimodal_text'].includes(c.content_type))continue;     // tool calls, reasoning, browsing results: not conversation text
+    let text=(Array.isArray(c.parts)?c.parts:[]).map(x=>typeof x==='string'?x:(x&&/image/.test(String(x.content_type||''))?'[image]':'')).filter(Boolean).join('\n').trim();
+    const att=(Array.isArray(md.attachments)?md.attachments:[]).map(a=>({name:String(a&&a.name||'').replace(/\s+/g,' ').trim().slice(0,200),mime:String(a&&a.mime_type||'').slice(0,100),size:Number(a&&a.size)||0,when:utc(m.create_time)})).filter(a=>a.name);
+    if(att.length){attachments.push(...att);text=(text?text+'\n':'')+att.map(a=>'[Attached file: '+a.name+(a.mime?' ('+a.mime+')':'')+']').join('\n');}
+    if(!text)continue;
+    const who=role==='user'?'User':'Assistant',when=utc(m.create_time);
+    const last=turns[turns.length-1];
+    if(last&&last.role===who&&who==='Assistant'){last.text+='\n\n'+text;continue;}       // one answer split around tool calls
+    turns.push({role:who,text,when});
+  }
+  return {turns,attachments,title:String(data&&data.title||'').replace(/\s+/g,' ').trim().slice(0,300),updated:utc(data&&data.update_time),created:utc(data&&data.create_time)};
+}
+// Collects every turn, including text deferred by content-visibility, via the DOM (fallback when the conversation data
+// was not seen). Scrolls to the top until the number of turns stops growing; complete=false when time ran out first.
 async function chatTranscript(page,service,deadline){
   const spec=TURNS[service];
   const found=await page.waitForFunction(sel=>document.querySelectorAll(sel).length>0,spec.all,{timeout:Math.min(25000,Math.max(1000,deadline-Date.now()-7000))}).then(()=>true,()=>false);
   if(!found)return [];
-  let last=-1;
-  for(let i=0;i<8&&Date.now()<deadline-6000;i++){
-    const n=await page.locator(spec.all).count();if(n===last)break;last=n;
-    await page.evaluate(sel=>document.querySelector(sel)?.scrollIntoView({block:'start'}),spec.all);
-    await page.waitForTimeout(700);
+  let last=-1,stable=0,complete=false;
+  for(let i=0;i<60&&Date.now()<deadline-8000;i++){
+    const n=await page.locator(spec.all).count();
+    if(n===last){if(++stable>=3){complete=true;break;}}else{stable=0;last=n;}
+    await page.evaluate(sel=>{document.querySelector(sel)?.scrollIntoView({block:'start'});
+      for(const e of document.querySelectorAll('main *')){if(e.scrollHeight>e.clientHeight+50&&getComputedStyle(e).overflowY!=='visible')e.scrollTop=0;}},spec.all);
+    await page.waitForTimeout(900);
   }
-  return page.evaluate(spec=>{
+  const turns=await page.evaluate(spec=>{
     const nodes=[...document.querySelectorAll(spec.all)].filter((e,_,all)=>!all.some(o=>o!==e&&o.contains(e)));
     const collect=n=>{
       if(n.nodeType===Node.TEXT_NODE)return n.nodeValue||'';
@@ -612,6 +644,8 @@ async function chatTranscript(page,service,deadline){
     const clean=x=>x.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
     return nodes.map(e=>{let text=clean(collect(e));if(!text)text=clean(collect(blockFor(e)));return {role:roleOf(e),text};}).filter(t=>t.text);
   },spec);
+  turns.complete=complete;
+  return turns;
 }
 // Structure only (tag/attribute names and counts), never conversation text: used to
 // repair selectors when a site changes its markup.
@@ -835,6 +869,13 @@ async function run(input,progress=()=>{},connect=(url,options)=>chromium.connect
     if(CHAT_OPS.includes(input.operation)){
       const service=input.operation.startsWith('claude')?'claude':'chatgpt';
       phase(service+'_chats');
+      const convo={data:null};
+      const onConvo=async r=>{try{
+        if(service!=='chatgpt'||r.request().method()!=='GET'||r.status()!==200)return;
+        const u=new URL(r.url());if(u.origin!=='https://chatgpt.com'||!CONVO_PATH.test(u.pathname))return;
+        const j=await r.json();if(j&&typeof j.mapping==='object'&&j.current_node)convo.data=j;
+      }catch{}};
+      page.on('response',onConvo);
       if(input.origin!==(service==='claude'?'https://claude.ai':'https://chatgpt.com')||!input.project_scope)throw new Error('Unsupported chat view');
       const listOp=input.operation.endsWith('_chats'),byUrl=new RegExp(CHAT_LINK[service]).test(page.url().split('?')[0]);
       if(listOp||!byUrl){
@@ -849,18 +890,42 @@ async function run(input,progress=()=>{},connect=(url,options)=>chromium.connect
         const matches=pick(chats,input.chat_title,'title');
         if(matches.length!==1)return {ok:false,kind:'chat_not_found',matches:matches.length,available:chats.slice(0,40).map(x=>x.title),error_stage:stage};
         await page.goto(matches[0].url,{waitUntil:'domcontentloaded',timeout:25000});
+      }else if(service==='chatgpt'){
+        // Opened directly at the chat during read navigation, before the listener existed: load it again so ChatGPT
+        // fetches the conversation data while we listen.
+        await page.reload({waitUntil:'domcontentloaded',timeout:25000});
       }
       phase(service+'_chat_read');
       if(!originOK())return {ok:false,kind:'origin_changed'};
-      const turns=await chatTranscript(page,service,deadline);
+      if(service==='chatgpt'&&!convo.data){
+        const until=Date.now()+Math.min(15000,Math.max(1000,deadline-Date.now()-12000));
+        while(!convo.data&&Date.now()<until)await page.waitForTimeout(250);
+      }
+      page.off('response',onConvo);
+      const chatUrl=page.url().split('?')[0];
+      let turns,attachments=[],meta={},extraction,complete;
+      const parsed=convo.data?conversationTurns(convo.data):null;
+      if(parsed&&parsed.turns.length){({turns,attachments}=parsed);meta={created:parsed.created,updated:parsed.updated};extraction='conversation_data';complete=true;}
+      else{turns=await chatTranscript(page,service,deadline);extraction='rendered_chat';complete=turns.complete!==false;}
       if(!turns.length)return {ok:false,kind:'chat_not_readable',error_stage:stage,dom_probe:await domProbe(page,TURNS[service].all)};
-      const title=(input.chat_title||(await page.title()).replace(/\s*[-|–]\s*(?:Claude|ChatGPT)\s*$/i,'')).trim().slice(0,300)||'Untitled chat';
-      const text=turns.map(t=>'['+t.role+']\n'+t.text).join('\n\n');
-      const r=previewPage({...input,file_name:title},text,page.url().split('?')[0]);
+      const title=(input.chat_title||parsed?.title||(await page.title()).replace(/\s*[-|–]\s*(?:Claude|ChatGPT)\s*$/i,'')).trim().slice(0,300)||'Untitled chat';
+      // The header names the chat as the site does, so reading by link or by title gives the same text (and sha256).
+      const siteTitle=(parsed?.title||(await page.title()).replace(/\s*[-|–]\s*(?:Claude|ChatGPT)\s*$/i,'')).trim().slice(0,300)||title;
+      const head=['Chat: '+siteTitle,...(meta.created?['Started: '+meta.created]:[]),...(meta.updated?['Last activity: '+meta.updated]:[]),'Turns: '+turns.length,
+        ...(attachments.length?['Files attached in this chat (names only; their contents are not in this transcript): '+attachments.map(a=>a.name+(a.when?' ('+a.when+')':'')).join('; ')]:[]),
+        ...(complete?[]:['WARNING: the page was still loading older messages when time ran out; the start of the chat may be missing.'])].join('\n');
+      const text=head+'\n\n'+turns.map(t=>'['+t.role+(t.when?' · '+t.when:'')+']\n'+t.text).join('\n\n');
+      const note=extraction==='conversation_data'
+        ?'The whole conversation as ChatGPT loaded it (current branch, in order, with times). Files attached in the chat are listed by name; their contents are not included.'
+        :'Rendered conversation text only. Files attached inside the chat are named in the transcript but not opened.';
+      if(input.full){
+        if(text.length>2000000)return {ok:false,kind:'chat_too_long',chars:text.length,error_stage:stage};
+        return {ok:true,chat:{title,chat_url:chatUrl,text,turns:turns.length,attachments:attachments.slice(0,100),extraction,complete,...meta,note}};
+      }
+      const r=previewPage({...input,file_name:title},text,chatUrl);
       if(!r.ok)return r;
       const {name,...rest}=r.file;
-      return {ok:true,chat:{title,...rest,chat_url:rest.project_url,turns:turns.length,extraction:'rendered_chat',
-        note:'Rendered conversation text only. Files attached inside the chat are named in the transcript but not opened.'}};
+      return {ok:true,chat:{title,...rest,chat_url:rest.project_url,turns:turns.length,attachments:attachments.slice(0,100),extraction,complete,...meta,note}};
     }
     if(input.operation==='project_catalog'){
       if(input.origin!=='https://chatgpt.com'||!input.project_scope)throw new Error('Unsupported catalog');
@@ -1083,4 +1148,4 @@ if(require.main===module){
  let raw='';process.stdin.on('data',c=>{raw+=c;if(raw.length>200000)process.exit(2)});
  process.stdin.on('end',async()=>{try{console.log(JSON.stringify(await run(JSON.parse(raw),event=>process.stdout.write(JSON.stringify(event)+'\n'))))}catch{console.log(JSON.stringify({ok:false,kind:'unconfirmed',error_stage:'driver_close',error_type:'driver_error'}));process.exitCode=1}});
 }
-module.exports={inScope,settle,sameValue,captureOriginal,kindOf,digest,pageKey,snapshot,readiness,readableSnapshot,locatorFor,fillReviewedField,run};
+module.exports={conversationTurns,inScope,settle,sameValue,captureOriginal,kindOf,digest,pageKey,snapshot,readiness,readableSnapshot,locatorFor,fillReviewedField,run};

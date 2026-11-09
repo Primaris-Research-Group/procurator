@@ -1,7 +1,7 @@
 {
   "id": "procurator-web",
   "name": "PROCURATOR Web",
-  "version": "0.32.0",
+  "version": "0.32.2",
   "description": "Scoped native Telegram task approvals, automatic continuation, and separate final-action review.",
   "activation": {
     "onStartup": true
