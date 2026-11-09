@@ -373,8 +373,8 @@ footer li{margin:6px 0}
       </div>
       <div class="hlc x">
         <h3>Coding orchestrator <span class="pill x">PROCURATOR‑X</span></h3>
-        <p>Write what you want built as a plain Markdown packet and approve once in Telegram. A builder on your own Mac or PC runs Claude Code or Codex on your subscription, inside a fresh clone with push disabled, and opens a <b>draft pull request</b>. Nothing merges or deploys by itself.</p>
-        <p class="hlm">Builders pull work over a restricted key · secret and path checks before any push · Builds tab on the dashboard · <b>Next (0.31):</b> choose the orchestrator model per packet, follow the build live and answer its questions from Telegram</p>
+        <p>Write what you want built as a plain <b>BUILD.md</b>, name the model, approve once in Telegram. A builder on your own Mac or PC runs Claude Code or Codex on your subscription, inside a fresh clone with push disabled, and opens a <b>draft pull request</b>. You follow the build live from your phone: progress every couple of minutes, the agent's questions wait for your answer, and <code>/buildnote</code> steers it mid-work. Nothing merges or deploys by itself.</p>
+        <p class="hlm">Builders pull work over a restricted key · secret and path checks before any push · live log on the Builds tab · model per packet (0.31)</p>
       </div>
     </div>
   </div>
@@ -649,8 +649,9 @@ curl -fsSL <span data-config="installurl">https://raw.githubusercontent.com/Prim
     <p class="eyebrow">Roadmap</p>
     <h2 class="measure">Where it is going</h2>
     <div class="road">
-      <div><div class="when">Now · 0.30</div><h3>Two editions, one public tree</h3><p>PROCURATOR and PROCURATOR‑X from one codebase: de‑personalised, Apache‑2.0, CI‑tested, exportable with a denylist gate. Accounts connect in two minutes.</p></div>
-      <div><div class="when">Next · 0.31</div><h3>Install from the repository</h3><p>Fresh server to working bot in under fifteen minutes; GHCR images; <code>procurator upgrade / doctor / backup</code>. PROCURATOR‑X gets its box‑side coding sandbox.</p></div>
+      <div><div class="when">Done · 0.30</div><h3>Two editions, one public tree</h3><p>PROCURATOR and PROCURATOR‑X from one codebase: de‑personalised, Apache‑2.0, CI‑tested, exportable with a denylist gate. Accounts connect in two minutes.</p></div>
+      <div><div class="when">Now · 0.31</div><h3>Live builds</h3><p>PROCURATOR‑X builds you can watch and steer: BUILD.md packets, your choice of model, progress in Telegram, questions that wait for you, <code>/buildnote</code>.</p></div>
+      <div><div class="when">Next · 0.32</div><h3>Install from the repository</h3><p>Fresh server to working bot in under fifteen minutes; GHCR images; <code>procurator upgrade / doctor / backup</code>. PROCURATOR‑X gets its box‑side coding sandbox.</p></div>
       <div><div class="when">Then</div><h3>Mac companion and Setup app</h3><p>Reminders, Notes, iMessage and Mac-side sending; a double-clickable installer that creates the server for you.</p></div>
       <div><div class="when">Later</div><h3>Connectors and a phone app</h3><p>Slack and Microsoft 365, home devices through Home Assistant, social accounts, and a native app on the versioned API.</p></div>
     </div>

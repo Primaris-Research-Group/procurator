@@ -4,8 +4,11 @@ import {ownerId} from './owner-config.mjs';
 // SSH key, runs Claude Code or Codex with their subscriptions on a fresh clone, runs the repo's own test command from
 // that machine's config, and opens a DRAFT PR. The droplet never runs anything on their machines; nothing is merged or
 // deployed. Files (state/procurator-build):
-//   jobs.json, queue/<id>.json, cancel/<id>   this plugin
-//   claims/, reports/, builders/<name>.json   build-relay.py (the name comes from the builder's SSH key)
+//   jobs.json, queue/<id>.json, cancel/<id>, notes/<id>/   this plugin
+//   claims/, reports/, builders/<name>.json, progress/<id>.jsonl   build-relay.py (the name comes from the builder's SSH key)
+// Live builds (0.31.0, Nov 8): a packet can be a BUILD.md (parsePacketMarkdown) and name the model; the builder streams
+// progress, the owner steers with /buildnote ID text (queued in notes/, delivered once by the relay), a QUESTION from the
+// agent puts the build in waiting_owner and reaches the owner at once; /buildlog ID shows the recent progress.
 import fs from 'node:fs';
 import {edition} from './connector-gate.mjs';
 import path from 'node:path';
@@ -19,11 +22,13 @@ const PATHSPEC = /^[A-Za-z0-9._/*-]{1,200}$/;
 const PR = /^https:\/\/github\.com\/[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}\/pull\/\d{1,7}$/;
 const ID = /^[a-f0-9]{16}$/;
 const NAME = /^[a-z0-9-]{1,20}$/;
+const MODEL = /^[A-Za-z0-9._:/-]{2,64}$/;
 const PENDING_MS = 30 * 60000, ONLINE_MS = 3 * 60000, OFFLINE_ALERT_MS = 10 * 60000, QUEUE_MAX_MS = 24 * 3600000;
 const AGENTS = {claude: 'Claude Code', codex: 'Codex'};
-const ACTIVE = ['queued', 'claimed', 'preparing', 'running', 'testing', 'pushing', 'cancel_requested'];
+const ACTIVE = ['queued', 'claimed', 'preparing', 'running', 'waiting_owner', 'testing', 'pushing', 'cancel_requested'];
 const FINAL = ['done', 'failed', 'cancelled', 'expired', 'rejected'];
-const WORKING = ['claimed', 'preparing', 'running', 'testing', 'pushing'];
+const WORKING = ['claimed', 'preparing', 'running', 'waiting_owner', 'testing', 'pushing'];
+const PROGRESS_DIGEST_MS = 2 * 60000;
 
 const digest = v => crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex').slice(0, 16);
 function atomic(file, value) {
@@ -37,9 +42,53 @@ const listOr = (xs, none) => xs.length ? xs.join(', ') : none;
 const where = b => 'your ' + (b?.label || b?.name || 'builder');
 
 // builders: [{name,label,online,repos,agents,default_agent,branches}] from builders/*.json
+// A BUILD.md packet (0.31.0): optional front matter between --- lines (repo, base, agent, model, builder, paths, max_minutes),
+// the first "# " heading as the title, "## Goal" as the goal, "## Acceptance" / "## Done when" bullets as checks, any other
+// section appended to the goal. Explicit tool arguments win over the file.
+export function parsePacketMarkdown(md) {
+  const text = String(md ?? '').replace(/\r\n?/g, '\n');
+  if (text.length > 20000) throw new Error('BUILD.md is longer than 20,000 characters.');
+  const out = {};
+  let body = text;
+  const fm = /^---\n([\s\S]*?)\n---\n?/.exec(text);
+  if (fm) {
+    body = text.slice(fm[0].length);
+    for (const line of fm[1].split('\n')) {
+      const m = /^([A-Za-z_]+)\s*:\s*(.*)$/.exec(line.trim());
+      if (!m) continue;
+      const key = m[1].toLowerCase(), raw = m[2].replace(/\s+#.*$/, '').trim();
+      const value = raw.replace(/^["']|["']$/g, '');
+      if (key === 'paths' || key === 'acceptance') out[key] = value.replace(/^\[|\]$/g, '').split(',').map(x => x.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+      else if (key === 'max_minutes') out.max_minutes = Number(value);
+      else if (['repo', 'base', 'agent', 'model', 'builder', 'title', 'mission', 'step', 'request_id'].includes(key)) out[key] = value;
+    }
+  }
+  const sections = {};
+  let current = '_', title = null;
+  for (const line of body.split('\n')) {
+    const h1 = /^#\s+(.+)$/.exec(line), h2 = /^##\s+(.+)$/.exec(line);
+    if (h1 && title === null) { title = h1[1].trim(); continue; }
+    if (h2) { current = h2[1].trim().toLowerCase(); sections[current] ??= []; continue; }
+    (sections[current] ??= []).push(line);
+  }
+  if (title && !out.title) out.title = title;
+  const take = names => { for (const n of Object.keys(sections)) if (names.some(x => n.startsWith(x))) { const v = sections[n].join('\n').trim(); delete sections[n]; return v; } return ''; };
+  const goal = take(['goal', 'what', 'task']);
+  const done = take(['acceptance', 'done when', 'done', 'checks']);
+  if (done) out.acceptance = [...(out.acceptance ?? []), ...done.split('\n').map(l => l.replace(/^\s*(?:[-*]|\d+[.)])\s*(?:\[[ xX]\]\s*)?/, '').trim()).filter(Boolean)];
+  const rest = Object.entries(sections).filter(([k, v]) => v.join('').trim()).map(([k, v]) => (k === '_' ? '' : k.replace(/\b\w/g, c => c.toUpperCase()) + ':\n') + v.join('\n').trim()).join('\n\n');
+  out.goal = [goal, rest].filter(Boolean).join('\n\n').trim();
+  return out;
+}
+
 export function validatePlan(a, builders) {
-  const args = a ?? {};
-  const allowed = ['repo', 'base', 'agent', 'builder', 'title', 'goal', 'acceptance', 'paths', 'max_minutes', 'request_id', 'mission', 'step'];
+  let args = a ?? {};
+  if (args.markdown != null) {
+    const {markdown, ...explicit} = args;
+    const parsed = parsePacketMarkdown(markdown);
+    args = {...parsed, ...Object.fromEntries(Object.entries(explicit).filter(([, v]) => v != null && v !== ''))};
+  }
+  const allowed = ['repo', 'base', 'agent', 'model', 'builder', 'title', 'goal', 'acceptance', 'paths', 'max_minutes', 'request_id', 'mission', 'step'];
   const extra = Object.keys(args).filter(k => !allowed.includes(k));
   if (extra.length) throw new Error('Unknown field(s): ' + extra.join(', '));
   const repo = String(args.repo ?? '').trim();
@@ -58,6 +107,10 @@ export function validatePlan(a, builders) {
   const agent = args.agent == null || args.agent === '' ? (preferred.default_agent || 'claude') : String(args.agent);
   if (!AGENTS[agent]) throw new Error('agent must be "claude" or "codex".');
   if (!eligible.some(b => b.agents?.[agent] !== false)) throw new Error(`${AGENTS[agent]} is not installed on ${eligible.map(b => b.label).join(' or ')}.`);
+  const model = args.model == null || args.model === '' ? '' : String(args.model).trim();
+  if (model && !MODEL.test(model)) throw new Error('model must be a short model name the agent accepts (e.g. opus, sonnet, gpt-5.3-codex).');
+  const offered = eligible.flatMap(b => b.models?.[agent] ?? []);
+  if (model && offered.length && !offered.includes(model)) throw new Error(`${model} is not on the builder's model list for ${AGENTS[agent]} (${[...new Set(offered)].join(', ')}). Leave model empty for the builder's default.`);
   const title = clean(args.title, 200).replace(/\s+/g, ' ');
   if (title.length < 3 || title.length > 100) throw new Error('title must be 3-100 characters.');
   const goal = clean(args.goal, 4001);
@@ -77,14 +130,14 @@ export function validatePlan(a, builders) {
   if (mission !== null && !/^[a-z0-9-]{2,24}$/.test(mission)) throw new Error('mission must be a packet name from mission_list.');
   const step = args.step == null || args.step === '' ? null : String(args.step);
   if (step !== null && !/^[A-Za-z0-9._:-]{1,48}\/s\d{1,2}$/.test(step)) throw new Error('step must look like THREAD/s2.');
-  return {requestId, plan: {repo, base, agent, builder: target, title, goal, acceptance: checks, paths, max_minutes: max}, mission, step};
+  return {requestId, plan: {repo, base, agent, ...(model ? {model} : {}), builder: target, title, goal, acceptance: checks, paths, max_minutes: max}, mission, step};
 }
 
 export class Builds {
   constructor(dir, gateway, now = () => Date.now()) {
     this.dir = dir; this.gateway = gateway; this.now = now;
     fs.mkdirSync(dir, {recursive: true, mode: 0o700});
-    for (const d of ['queue', 'cancel', 'claims', 'reports', 'builders']) fs.mkdirSync(path.join(dir, d), {recursive: true, mode: 0o700});
+    for (const d of ['queue', 'cancel', 'claims', 'reports', 'builders', 'notes', 'progress']) fs.mkdirSync(path.join(dir, d), {recursive: true, mode: 0o700});
     this.file = path.join(dir, 'jobs.json');
   }
   read() { try { return JSON.parse(fs.readFileSync(this.file, 'utf8')); } catch (e) { if (e.code === 'ENOENT') return {jobs: []}; throw e; } }
@@ -101,6 +154,9 @@ export class Builds {
       out.push({name, label: clean(b.label, 30) || name, online: this.now() - seen < ONLINE_MS, seen_at: seen, last_seen: seen ? ago(this.now() - seen) : 'never',
         repos: Array.isArray(b.repos) ? b.repos.filter(r => typeof r === 'string' && REPO.test(r)) : [],
         agents: {claude: b.agents?.claude === true, codex: b.agents?.codex === true}, default_agent: AGENTS[b.default_agent] ? b.default_agent : null,
+        models: Object.fromEntries(Object.keys(AGENTS).map(k => [k, Array.isArray(b.models?.[k]) ? b.models[k].filter(m => typeof m === 'string' && MODEL.test(m)).slice(0, 20) : []])),
+        default_models: Object.fromEntries(Object.keys(AGENTS).map(k => [k, typeof b.defaults?.models?.[k] === 'string' && MODEL.test(b.defaults.models[k]) ? b.defaults.models[k] : null])),
+        live: b.live !== false,
         branches: b.branches && typeof b.branches === 'object' ? b.branches : {}, busy: ID.test(b.busy ?? '') ? b.busy : null, host: clean(b.host, 60)});
     }
     return out;
@@ -115,7 +171,37 @@ export class Builds {
       files: Array.isArray(r.files) ? r.files.slice(0, 60).map(f => clean(f, 200)) : [], file_count: Number.isInteger(r.file_count) ? r.file_count : undefined,
       insertions: Number.isInteger(r.insertions) ? r.insertions : undefined, deletions: Number.isInteger(r.deletions) ? r.deletions : undefined,
       duration_s: Number.isInteger(r.duration_s) ? r.duration_s : undefined, cost_usd: typeof r.cost_usd === 'number' ? r.cost_usd : undefined,
+      question: clean(r.question, 1500) || null, model: MODEL.test(r.model ?? '') ? r.model : null, progress_count: Number.isInteger(r.progress_count) ? r.progress_count : 0,
       updated_at: Number(r.updated_at) || 0};
+  }
+  // progress/<id>.jsonl (relay-written): the last n entries, each {t, text, name?, at}.
+  progress(id, n = 15) {
+    if (!ID.test(id ?? '')) return [];
+    let lines; try { lines = fs.readFileSync(path.join(this.dir, 'progress', id + '.jsonl'), 'utf8').split('\n').filter(Boolean); } catch { return []; }
+    return lines.slice(-n).map(l => { try { const e = JSON.parse(l); return {t: clean(e.t, 10), text: clean(e.text, 400), name: clean(e.name, 40) || null, at: Number(e.at) || 0}; } catch { return null; } }).filter(Boolean);
+  }
+  progressLine(e) {
+    const t = e.at ? new Date(e.at).toISOString().slice(11, 16) + ' ' : '';
+    if (e.t === 'tool') return `${t}▸ ${e.name || 'tool'}${e.text ? ' ' + e.text : ''}`;
+    if (e.t === 'say') return `${t}${e.text}`;
+    if (e.t === 'question') return `${t}❓ ${e.text}`;
+    if (e.t === 'note') return `${t}You: ${e.text}`;
+    if (e.t === 'result') return `${t}✔ ${e.text}`;
+    return `${t}${e.text}`;
+  }
+  // /buildnote: the owner's message for the agent, queued for the relay to hand over with the builder's next report.
+  note(id, text, assertOwner = () => {}) {
+    assertOwner();
+    const j = this.read(), r = this.find(j, id);
+    const msg = clean(text, 2000);
+    if (msg.length < 2) throw new Error('Write the message after the id: /buildnote ID what you want the agent to do or know.');
+    if (!ACTIVE.includes(r.status) || r.status === 'queued') throw new Error(`Build ${r.id} is ${r.status.replace(/_/g, ' ')}; notes reach the agent only while it is working.`);
+    const d = path.join(this.dir, 'notes', r.id);
+    fs.mkdirSync(d, {recursive: true, mode: 0o700});
+    const name = `${String(this.now()).padStart(13, '0')}-${crypto.randomBytes(4).toString('hex')}.json`;
+    atomic(path.join(d, name), {text: msg, at: this.now()});
+    r.notes = (r.notes ?? 0) + 1; this.save(j);
+    return {id: r.id, status: r.status, queued: true, answers_question: r.status === 'waiting_owner'};
   }
   labelOf(name) { return this.builders().find(b => b.name === name)?.label || name || 'builder'; }
 
@@ -157,12 +243,13 @@ export class Builds {
   review(r) {
     const p = r.plan;
     return [`BUILD REVIEW — ${r.id}`,
-      `Repo: ${p.repo} (from ${p.base}) · ${AGENTS[p.agent]}`,
+      `Repo: ${p.repo} (from ${p.base}) · ${AGENTS[p.agent]}${p.model ? ' (' + p.model + ')' : ''}`,
       'Runs on: ' + this.runsOn(p),
       `Title: ${p.title}`, '', 'Goal:', p.goal,
       ...(p.acceptance.length ? ['', 'Done when:', ...p.acceptance.map(x => '• ' + x)] : []), '',
       'Files it may change: ' + (p.paths.length ? p.paths.join(', ') : 'any file in the repo'),
       `Time limit: ${p.max_minutes} min`, '',
+      'While it works: I message you its progress; /buildnote ' + r.id + ' <text> steers it, and if it needs a decision it stops and asks you.', '',
       `What happens: the builder clones the repo into a fresh folder, runs ${AGENTS[p.agent]} with your own subscription on branch procurator/${r.id}, runs the test command saved in that machine's builder settings, and opens a DRAFT pull request for you to review. Nothing is merged or deployed, and secrets are blocked from the change.`, '',
       'Approve within 30 minutes with the entire plain-text line:', `/buildapprove ${r.id} ${r.hash}`, `Cancel: /buildcancel ${r.id}`].join('\n');
   }
@@ -195,8 +282,9 @@ export class Builds {
   view(r) {
     const rep = this.report(r.id);
     const status = r.status === 'pending' && r.expiresAt <= this.now() ? 'expired' : r.status;
-    return {id: r.id, status, repo: r.plan.repo, base: r.plan.base, agent: r.plan.agent, title: r.plan.title, target: r.plan.builder || 'any', created: new Date(r.createdAt).toISOString(), ...(r.mission ? {mission: r.mission, step: r.step} : {}),
-      ...(rep ? {builder: rep.builder ? this.labelOf(rep.builder) : undefined, builder_status: rep.status, message: rep.message || undefined, pr_url: rep.pr_url || undefined, branch: rep.branch || undefined, tests: rep.tests?.status || undefined,
+    return {id: r.id, status, repo: r.plan.repo, base: r.plan.base, agent: r.plan.agent, model: r.plan.model || undefined, title: r.plan.title, target: r.plan.builder || 'any', created: new Date(r.createdAt).toISOString(), ...(r.mission ? {mission: r.mission, step: r.step} : {}),
+      ...(ACTIVE.includes(status) ? {progress: this.progress(r.id, 8).map(e => this.progressLine(e)), steer: `/buildnote ${r.id} <text>`} : {}),
+      ...(rep ? {builder: rep.builder ? this.labelOf(rep.builder) : undefined, builder_status: rep.status, message: rep.message || undefined, question: rep.question || undefined, pr_url: rep.pr_url || undefined, branch: rep.branch || undefined, tests: rep.tests?.status || undefined,
         files_changed: rep.file_count, summary: rep.summary || undefined, minutes: rep.duration_s ? Math.round(rep.duration_s / 60) : undefined} : {})};
   }
   status(id) {
@@ -227,7 +315,18 @@ export class Builds {
       }
       const send = async (kind, text) => { if (r.notified[kind]) return; try { await this.notify(text, `${r.id}:${kind}`); r.notified[kind] = this.now(); changed = true; } catch {} };
       const on = where({label: this.labelOf(r.builder)});
-      if (['preparing', 'running', 'testing', 'pushing'].includes(r.status)) await send('started', `Build ${r.id} started on ${on}: ${AGENTS[r.plan.agent]} is working on ${r.plan.repo} (“${r.plan.title}”). I'll message you when the pull request is ready. Stop it: /buildcancel ${r.id}`);
+      if (rep && r.status === 'waiting_owner' && rep.question && rep.question !== r.askedQuestion) {
+        r.askedQuestion = rep.question; r.notified['q:' + digest(rep.question)] = undefined; changed = true;
+        await send('q:' + digest(rep.question), `BUILD QUESTION — ${r.id} (${r.plan.title})\n${AGENTS[r.plan.agent]} needs your decision:\n\n${rep.question}\n\nAnswer with: /buildnote ${r.id} your answer\n(It waits up to the builder's limit, then uses its judgement.)`);
+      }
+      if (rep && ['running', 'testing'].includes(r.status) && rep.progress_count > (r.digestedCount ?? 0) && this.now() - (r.lastDigest ?? 0) >= PROGRESS_DIGEST_MS) {
+        const fresh = this.progress(r.id, 6);
+        if (fresh.length) {
+          r.digestedCount = rep.progress_count; r.lastDigest = this.now(); changed = true;
+          try { await this.notify(`Build ${r.id} · ${AGENTS[r.plan.agent]} on ${r.plan.repo}:\n` + fresh.map(e => this.progressLine(e)).join('\n') + `\n\nSteer: /buildnote ${r.id} <text> · Log: /buildlog ${r.id}`, `${r.id}:digest:${rep.progress_count}`); } catch {}
+        }
+      }
+      if (['preparing', 'running', 'waiting_owner', 'testing', 'pushing'].includes(r.status)) await send('started', `Build ${r.id} started on ${on}: ${AGENTS[r.plan.agent]}${r.plan.model ? ' (' + r.plan.model + ')' : ''} is working on ${r.plan.repo} (“${r.plan.title}”). I'll message you when the pull request is ready. Stop it: /buildcancel ${r.id}`);
       if (r.status === 'done' && rep) await send('final', this.doneText(r, rep));
       if (r.status === 'failed' && rep) await send('final', `BUILD FAILED — ${r.id} (${r.plan.repo}, ${on})\n${rep.message || 'No reason given.'}${rep.tests?.output_tail ? '\nLast test output:\n' + rep.tests.output_tail.slice(-600) : ''}\n` + (rep.pr_url ? `A draft pull request exists: ${rep.pr_url}` : rep.branch && r.lastWorking === 'pushing' ? `Branch ${rep.branch} may have been pushed without a pull request.` : 'Nothing was pushed to GitHub.') + ` Details: /buildstatus ${r.id}`);
       if (r.status === 'cancelled') await send('final', `Build ${r.id} stopped. Nothing was pushed.`);
@@ -259,6 +358,8 @@ export function registerBuilds(api, builds, ownerContext) {
     build_prepare: {description: 'Prepare a code build on one of the owner\'s own machines (their always-on Windows PC or their Mac; Claude Code or Codex with their subscriptions) and send them the exact packet for /buildapprove. The builder clones the repo, works on a new branch, runs the repo\'s tests and opens a DRAFT pull request; nothing is merged or deployed. Only repos a builder allows: call build_status first and use the exact owner/name it lists; never guess a GitHub owner from an email address. If the repo is not allowed yet, tell the owner the exact add-repo command and which machine to run it on (the error names the builders). Write a precise goal and testable acceptance checks; never put passwords, keys or tokens in a build.',
       properties: {repo: {type: 'string', description: 'GitHub owner/name, e.g. example-user/website'}, base: {type: 'string', description: 'Branch to start from (default: the builder\'s setting, usually main)'},
         agent: {type: 'string', enum: ['claude', 'codex'], description: 'claude = Claude Code (default), codex = OpenAI Codex'},
+        model: {type: 'string', description: 'Optional: the model the coding agent should use, as its CLI names it (Claude Code: opus, sonnet, or a full model id; Codex: e.g. gpt-5.3-codex). Empty = the builder\'s default.'},
+        markdown: {type: 'string', description: 'Optional: the owner\'s BUILD.md packet as text. Front matter (repo, base, agent, model, builder, paths, max_minutes), "# title", "## Goal", "## Acceptance" bullets. Fields given explicitly override it.'},
         builder: {type: 'string', description: 'Which machine: "any" (default: the first free builder that allows the repo) or a builder name from build_status (e.g. "windows", "mac") when the owner asks for one'},
         title: {type: 'string', description: 'Short PR title, 3-100 characters'},
         goal: {type: 'string', description: 'What to build or fix, with the details the coding agent needs (up to 4000 characters)'},
@@ -266,8 +367,8 @@ export function registerBuilds(api, builds, ownerContext) {
         paths: {type: 'array', items: {type: 'string'}, description: 'Optional: only these repo folders/patterns may change (e.g. "src/", "docs/*.md")'},
         max_minutes: {type: 'integer', description: '5-60, default 30'}, request_id: {type: 'string', description: 'Your own id for this request (8-64 chars); reuse it if you retry the same packet'},
         mission: {type: 'string', description: 'Optional: the task packet (mission) this build belongs to, e.g. "sandbox"'}, step: {type: 'string', description: 'Optional: the packet step, e.g. "MAIN/s1"; the PR link and test result are written to it as evidence'}},
-      required: ['repo', 'title', 'goal', 'request_id'], run: a => builds.prepare(a)},
-    build_status: {description: 'Builders (their Windows PC, their Mac: online, allowed repos, installed agents) and recent builds with their pull request links, test results and summaries; pass id for one build.',
+      required: ['request_id'], run: a => builds.prepare(a)},
+    build_status: {description: 'Builders (their Windows PC, their Mac: online, allowed repos, installed agents, models) and recent builds with their pull request links, test results, summaries, and for a running build its live progress and any open question; pass id for one build.',
       properties: {id: {type: 'string'}}, required: [], run: a => builds.status(a?.id)},
     build_cancel: {description: 'Stop a pending, queued or running build (nothing is pushed). Say so to the owner.',
       properties: {id: {type: 'string'}}, required: ['id'], run: a => builds.cancel(a.id)},
@@ -298,6 +399,19 @@ export function registerBuilds(api, builds, ownerContext) {
     return head + '\n\n' + (s.builds.length ? s.builds.map(line).join('\n') : 'No builds yet.');
   });
   cmd('buildreview', 'Re-show a pending build packet: /buildreview ID', args => builds.review(builds.find(builds.read(), args)));
+  cmd('buildnote', 'Steer a running build or answer its question: /buildnote ID your message', args => {
+    const m = /^([a-f0-9]{16})\s+([\s\S]+)$/.exec(args);
+    if (!m) return 'Use: /buildnote ID your message — the id is in the build messages; the text reaches the coding agent as your instruction.';
+    const out = builds.note(m[1], m[2]);
+    return out.answers_question ? `Answer sent to build ${out.id}; the agent continues with it within about 15 seconds.` : `Note queued for build ${out.id}; the agent gets it within about 15 seconds, as "OWNER: …".`;
+  });
+  cmd('buildlog', 'Recent progress of a build: /buildlog ID', args => {
+    const r = builds.find(builds.read(), args);
+    const lines = builds.progress(r.id, 20).map(e => builds.progressLine(e));
+    const rep = builds.report(r.id);
+    return [`Build ${r.id} · ${r.status.replace(/_/g, ' ')} · ${r.plan.repo} · ${r.plan.title}${r.plan.model ? ' · ' + r.plan.model : ''}`, ...(rep?.question ? ['', 'Waiting for you: ' + rep.question, `Answer: /buildnote ${r.id} …`] : []), '',
+      ...(lines.length ? lines : ['No progress reported yet.']), ...(ACTIVE.includes(r.status) ? ['', `Steer: /buildnote ${r.id} <text> · Stop: /buildcancel ${r.id}`] : [])].join('\n');
+  });
   const KEY = Symbol.for('owner.builds.sweep');
   if (globalThis[KEY]) clearInterval(globalThis[KEY]);
   let busy = false;

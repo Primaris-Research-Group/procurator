@@ -39,6 +39,7 @@ input[type=text],input[type=number],select,textarea{font:inherit;padding:8px 10p
 label{display:block;font-size:13px;color:var(--muted);margin:8px 0 3px}form.inline{display:flex;gap:8px;flex-wrap:wrap;align-items:end}form.inline label{margin:0}
 .bar-h{height:8px;border-radius:999px;background:var(--chip);overflow:hidden}.bar-h i{display:block;height:100%;background:var(--accent)}.bar-h i.warn{background:var(--warn)}.bar-h i.bad{background:var(--bad)}
 .tg{font-family:var(--mono);font-size:13px;background:var(--chip);padding:3px 7px;border-radius:7px;user-select:all;white-space:nowrap}
+.plog{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:13.5px}.pl{padding:4px 0;border-bottom:1px solid var(--line)}.pl:last-child{border-bottom:0}.pl .sub{display:inline-block;min-width:92px}
 pre{font-family:var(--mono);font-size:12px;background:var(--chip);padding:10px;border-radius:10px;overflow:auto;max-height:360px;white-space:pre-wrap;word-break:break-word}
 ul.plain{list-style:none;margin:0;padding:0}ul.plain li{padding:6px 0;border-bottom:1px solid var(--line)}ul.plain li:last-child{border-bottom:0}
 .steps li{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start}.steps .evid{font-size:12px;color:var(--muted)}

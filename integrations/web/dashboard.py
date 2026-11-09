@@ -337,7 +337,27 @@ class Dashboard:
                         'pr_url': r.get('pr_url') if isinstance(r.get('pr_url'), str) and re.match(r'^https://github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+/pull/\d+$', r['pr_url']) else None,
                         'tests': {'status': str(tests.get('status') or '')[:20], 'command': str(tests.get('command') or '')[:200]} if tests else None,
                         'summary': str(r.get('summary') or '')[:3000], 'message': str(r.get('message') or '')[:600], 'files': r.get('file_count'),
-                        'log_tail': str((tests or {}).get('output_tail') or '')[-2000:]})
+                        'log_tail': str((tests or {}).get('output_tail') or '')[-2000:],
+                        'model': str(plan.get('model') or r.get('model') or '')[:64], 'question': str(r.get('question') or '')[:1500] if r.get('status') == 'waiting_owner' else '',
+                        'progress': self.build_progress(jid)})
+        return out
+
+    def build_progress(self, jid, n=40):
+        """Live builds (0.31.0): the relay appends what the agent is doing to progress/<id>.jsonl; the last n lines, newest last."""
+        if not re.fullmatch(r'[a-f0-9]{16}', jid or ''):
+            return []
+        try:
+            lines = (self.state / 'procurator-build' / 'progress' / (jid + '.jsonl')).read_text(errors='replace').splitlines()
+        except OSError:
+            return []
+        out = []
+        for line in lines[-n:]:
+            try:
+                e = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(e, dict):
+                out.append({'t': str(e.get('t') or '')[:10], 'text': str(e.get('text') or '')[:400], 'name': str(e.get('name') or '')[:40], 'at': e.get('at') if isinstance(e.get('at'), int) else 0})
         return out
 
     def missions(self):
@@ -856,13 +876,20 @@ class Dashboard:
         b = next((x for x in self.builds() if x['id'] == bid), None)
         if not b:
             return '<section class="card"><p class="empty">No build with that id.</p></section>'
-        return ('<section class="card"><h2>Build %s %s</h2><div class="kv"><b>Title</b><span>%s</span><b>Repo</b><span>%s</span><b>Agent</b><span>%s on %s</span><b>Packet</b><span>%s</span><b>Created</b><span>%s</span><b>Updated</b><span>%s</span>'
+        live = ''
+        if b['question']:
+            live += '<div class="msg warn" style="margin-top:12px"><b>Waiting for you:</b> %s<div class="sub">Answer in Telegram: <span class="tg">/buildnote %s your answer</span></div></div>' % (esc(b['question']), esc(b['id']))
+        if b['progress']:
+            icon = {'tool': '&#9656;', 'say': '', 'question': '&#10067;', 'note': 'You: ', 'result': '&#10004; ', 'info': '&#8505; '}
+            rows_ = ''.join('<div class="pl"><span class="sub">%s</span> %s%s%s</div>' % (esc(when(e["at"])) if e["at"] else "", icon.get(e['t'], ''), ('<b>%s</b> ' % esc(e['name'])) if e['t'] == 'tool' and e['name'] else '', esc(e['text'])) for e in b['progress'])
+            live += '<h2 style="margin-top:12px">Live log</h2><div class="plog">%s</div><p class="sub">Steer it from Telegram: <span class="tg">/buildnote %s what to change</span> · this page refreshes when you reload it.</p>' % (rows_, esc(b['id']))
+        return ('<section class="card"><h2>Build %s %s</h2><div class="kv"><b>Title</b><span>%s</span><b>Repo</b><span>%s</span><b>Agent</b><span>%s%s on %s</span><b>Packet</b><span>%s</span><b>Created</b><span>%s</span><b>Updated</b><span>%s</span>'
                 '<b>Duration</b><span>%s</span><b>Cost</b><span>%s</span><b>Tests</b><span>%s</span><b>PR</b><span>%s</span><b>Files</b><span>%s</span><b>Message</b><span>%s</span></div>'
-                '<h2 style="margin-top:12px">Agent summary</h2><pre>%s</pre><h2>Test output (tail)</h2><pre>%s</pre><p class="sub">Cancel: <span class="tg">/buildcancel %s</span></p></section>') % (
-            esc(b['id'][:8]), A.chip(b['status']), esc(b['title']), esc(b['repo']), esc(b['agent'] or '?'), esc(b['builder'] or 'any'), (esc(b['mission']) + ' step ' + esc(b['step'])) if b['mission'] else '—',
+                '%s<h2 style="margin-top:12px">Agent summary</h2><pre>%s</pre><h2>Test output (tail)</h2><pre>%s</pre><p class="sub">Cancel: <span class="tg">/buildcancel %s</span></p></section>') % (
+            esc(b['id'][:8]), A.chip(b['status']), esc(b['title']), esc(b['repo']), esc(b['agent'] or '?'), (' (' + esc(b['model']) + ')') if b['model'] else '', esc(b['builder'] or 'any'), (esc(b['mission']) + ' step ' + esc(b['step'])) if b['mission'] else '—',
             esc(when(b['created'])), esc(when(b['updated'])), ('%d s' % b['duration_s']) if b['duration_s'] is not None else '—', A.fmt_usd(b['cost_usd']) if b['cost_usd'] is not None else '—',
             (esc(b['tests']['status']) + ' · ' + esc(b['tests']['command'])) if b['tests'] else '—', ('<a href="%s">%s</a>' % (esc(b['pr_url']), esc(b['pr_url']))) if b['pr_url'] else '—',
-            esc(b['files'] if b['files'] is not None else '—'), esc(b['message'] or '—'), esc(b['summary'] or '(none)'), esc(b['log_tail'] or '(none)'), esc(b['id']))
+            esc(b['files'] if b['files'] is not None else '—'), esc(b['message'] or '—'), live, esc(b['summary'] or '(none)'), esc(b['log_tail'] or '(none)'), esc(b['id']))
 
     def page_usage(self):
         u = self.usage(14)

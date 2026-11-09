@@ -29,8 +29,34 @@ mode = os.environ.get('FAKE_MODE', 'ok')
 if '--version' in sys.argv: print('fake 1.0'); sys.exit(0)
 if '--help' in sys.argv: print('--permission-mode --disallowedTools --allowedTools -p --output-format --sandbox --color -C --output-last-message'); sys.exit(0)
 if os.environ.get('CLAUDE_CODE_OAUTH_TOKEN'): open(os.environ['FAKE_LOG'], 'a').write(json.dumps(['token-seen', len(os.environ['CLAUDE_CODE_OAUTH_TOKEN'])]) + '\n')
-open(os.environ['FAKE_LOG'], 'a').write(json.dumps(['agent'] + sys.argv[1:4]) + '\n')
+stream = '--input-format' in sys.argv            # Claude Code live mode (1.4.0): the prompt arrives on stdin
+def emit(ev): print(json.dumps(ev), flush=True)
+def read_user():
+    line = sys.stdin.readline()
+    if not line: sys.exit(0)
+    return json.loads(line)['message']['content'][0]['text']
+def result(text, cost=0.42): emit({'type': 'result', 'subtype': 'success', 'is_error': False, 'result': text, 'total_cost_usd': cost, 'num_turns': 1})
+argv_log = ['agent'] + sys.argv[1:4]
+if stream:
+    prompt = read_user()
+    argv_log = ['agent', '-p', prompt, 'stream']
+if '-m' in sys.argv: argv_log.append('model=' + sys.argv[sys.argv.index('-m') + 1])
+if '--model' in sys.argv: argv_log.append('model=' + sys.argv[sys.argv.index('--model') + 1])
+open(os.environ['FAKE_LOG'], 'a').write(json.dumps(argv_log) + '\n')
 if mode == 'sleep': time.sleep(60)
+if mode == 'ask' and stream:
+    emit({'type': 'assistant', 'message': {'content': [{'type': 'text', 'text': 'Looking at the repo.'}, {'type': 'tool_use', 'name': 'Read', 'input': {'file_path': 'README.md'}}]}})
+    result('QUESTION: Should the greeting be in English or Spanish?')
+    answer = read_user()                           # the owner's note, relayed as "OWNER: …"
+    emit({'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Write', 'input': {'file_path': 'src/hello.txt'}}]}})
+    os.makedirs('src', exist_ok=True); open('src/hello.txt', 'w').write(answer + '\n')
+    result('Wrote src/hello.txt as the owner asked: ' + answer)
+    read_user()                                    # EOF: PROCURATOR closed stdin
+if mode == 'json-codex':
+    emit({'type': 'item.started', 'item': {'type': 'command_execution', 'command': 'ls src'}})
+    emit({'type': 'item.completed', 'item': {'type': 'agent_message', 'text': 'Adding the file now.'}})
+    os.makedirs('src', exist_ok=True); open('src/hello.txt', 'w').write('hello from codex\n')
+    emit({'type': 'item.completed', 'item': {'type': 'file_change', 'changes': [{'path': 'src/hello.txt'}]}})
 if mode == 'ok':
     os.makedirs('src', exist_ok=True); open('src/hello.txt', 'w').write('hello from the agent\n')
 if mode == 'secret':
@@ -41,7 +67,12 @@ if mode == 'envfile':
     open('.env', 'w').write('X=1\n')
 last = [sys.argv[i + 1] for i, x in enumerate(sys.argv) if x == '--output-last-message']
 if last: open(last[0], 'w').write('Codex summary: added src/hello.txt')
-print(json.dumps({'type': 'result', 'subtype': 'success', 'is_error': False, 'result': 'Added src/hello.txt and tested it.', 'total_cost_usd': 0.42}))
+if stream:
+    emit({'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Write', 'input': {'file_path': 'src/hello.txt'}}]}})
+    result('Added src/hello.txt and tested it.')
+    read_user()                                    # wait for PROCURATOR to close stdin (no question, no notes)
+elif '--json' not in sys.argv:
+    print(json.dumps({'type': 'result', 'subtype': 'success', 'is_error': False, 'result': 'Added src/hello.txt and tested it.', 'total_cost_usd': 0.42}))
 '''
 
 
@@ -69,6 +100,7 @@ class BuilderTest(unittest.TestCase):
         os.makedirs(t('builder'))
         self.cfg = {'relay': [sys.executable, RELAY, '--builder', 'mac'], 'label': 'Mac', 'builds_dir': t('builds'), 'path': t('bin') + ':' + os.environ['PATH'],
                     'tools': {'gh': t('bin', 'gh'), 'claude': t('bin', 'claude'), 'codex': t('bin', 'codex'), 'git': 'git'},
+                    'progress_s': 5, 'wait_minutes': 1,
                     'repos': {'example-user/demo': {'branch': 'main', 'test': './test.sh', 'agents': ['claude', 'codex']}}}
         json.dump(self.cfg, open(t('builder', 'config.json'), 'w'))
         self.t = t
@@ -106,6 +138,19 @@ class BuilderTest(unittest.TestCase):
         self.assertFalse(self.relay('report ' + i, {'status': 'running', 'branch': 'main'})['ok'])
         self.assertTrue(self.relay('report ' + i, {'status': 'running', 'message': 'x' * 5000})['ok'])
         self.assertEqual(len(self.report(i)['message']), 600)
+        # live builds (1.4.0): progress is appended, notes come back once, waiting_owner carries the question
+        self.assertFalse(self.relay('report ' + i, {'status': 'running', 'progress': [{'t': 'hack', 'text': 'x'}]})['ok'])
+        out = self.relay('report ' + i, {'status': 'running', 'progress': [{'t': 'say', 'text': 'Reading'}, {'t': 'tool', 'name': 'Edit', 'text': 'src/a.py'}], 'model': 'opus'})
+        self.assertEqual(out['notes'], [])
+        self.assertEqual([json.loads(l)['t'] for l in open(self.t('state', 'procurator-build', 'progress', i + '.jsonl'))], ['say', 'tool'])
+        self.assertEqual(self.report(i)['progress_count'], 2); self.assertEqual(self.report(i)['model'], 'opus')
+        notes = self.t('state', 'procurator-build', 'notes', i); os.makedirs(notes)
+        json.dump({'text': 'use Spanish', 'at': 5}, open(os.path.join(notes, '1700000000000-abcd.json'), 'w'))
+        open(os.path.join(notes, 'evil.txt'), 'w').write('x')
+        out = self.relay('report ' + i, {'status': 'waiting_owner', 'question': 'Which language?'})
+        self.assertEqual([n['text'] for n in out['notes']], ['use Spanish']); self.assertEqual(self.report(i)['question'], 'Which language?')
+        self.assertEqual(self.relay('report ' + i, {'status': 'running'})['notes'], [], 'each note is delivered once')
+        self.assertNotIn('question', self.report(i), 'moving on clears the question')
         open(self.t('state', 'procurator-build', 'cancel', i), 'w').write('1')
         self.assertEqual(self.relay('hello', {})['cancel'], [i])
         self.assertTrue(self.relay('report ' + i, {'status': 'cancelled'})['cancel'])
@@ -134,9 +179,69 @@ class BuilderTest(unittest.TestCase):
         self.assertIn('--draft', pr); self.assertEqual(pr[pr.index('--base') + 1], 'main')
         agent = next(c for c in calls if c[0] == 'agent')
         self.assertEqual(agent[1], '-p'); self.assertIn('Never add or print secrets', agent[2])
-        self.assertIn('Change only src/', agent[2])
+        self.assertIn('Change only src/', agent[2]); self.assertIn('QUESTION:', agent[2], 'the live protocol is in the prompt')
+        self.assertEqual(agent[3], 'stream', 'Claude Code runs in stream-json mode by default (1.4.0)')
+        progress = [json.loads(l) for l in open(self.t('state', 'procurator-build', 'progress', i + '.jsonl'))]
+        self.assertEqual([e['t'] for e in progress], ['tool', 'result']); self.assertEqual(progress[0]['name'], 'Write'); self.assertEqual(progress[0]['text'], 'src/hello.txt')
         msg = subprocess.run(['git', 'log', '-1', '--format=%B', 'procurator/' + i], cwd=self.t('remote.git'), capture_output=True, text=True).stdout
         self.assertIn('PROCURATOR build ' + i, msg)
+
+    def test_live_build_waits_for_the_owner_and_relays_the_answer(self):
+        """1.4.0: the agent asks QUESTION:, the report goes waiting_owner, /buildnote (a notes/ file) reaches the agent as the
+        next message, the build finishes with the owner's answer in the change, and every step is in the progress log."""
+        i = self.queue(model='opus')
+        env = dict(self.env, FAKE_MODE='ask')
+        p = subprocess.Popen([sys.executable, WORKER, 'once'], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            try:
+                if self.report(i)['status'] == 'waiting_owner':
+                    break
+            except (OSError, ValueError, KeyError):
+                pass
+            time.sleep(0.3)
+        r = self.report(i)
+        self.assertEqual(r['status'], 'waiting_owner', r); self.assertEqual(r['question'], 'Should the greeting be in English or Spanish?'); self.assertEqual(r['model'], 'opus')
+        notes = self.t('state', 'procurator-build', 'notes', i); os.makedirs(notes, exist_ok=True)
+        json.dump({'text': 'Spanish, please: hola', 'at': 1}, open(os.path.join(notes, '%d-abcd1234.json' % int(time.time() * 1000)), 'w'))
+        out, err = p.communicate(timeout=90)
+        self.assertEqual(p.returncode, 0, err)
+        r = self.report(i)
+        self.assertEqual(r['status'], 'done', r); self.assertNotIn('question', r, 'an answered question is cleared')
+        self.assertIn('hola', r['summary'])
+        self.assertEqual(os.listdir(notes), [], 'delivered notes are consumed')
+        shown = subprocess.run(['git', 'show', 'procurator/%s:src/hello.txt' % i], cwd=self.t('remote.git'), capture_output=True, text=True).stdout
+        self.assertEqual(shown.strip(), 'OWNER: Spanish, please: hola')
+        kinds = [json.loads(l)['t'] for l in open(self.t('state', 'procurator-build', 'progress', i + '.jsonl'))]
+        self.assertEqual(kinds, ['say', 'tool', 'question', 'note', 'tool', 'result'])
+        calls = [json.loads(l) for l in open(self.t('calls.log'))]
+        self.assertIn('model=opus', next(c for c in calls if c[0] == 'agent'))
+
+    def test_codex_live_streams_progress_and_passes_the_model(self):
+        i = self.queue(agent='codex', model='gpt-5.3-codex')
+        out = self.worker('once', mode='json-codex')
+        self.assertEqual(out.returncode, 0, out.stderr)
+        r = self.report(i)
+        self.assertEqual(r['status'], 'done', r); self.assertIn('Codex summary', r['summary'])
+        kinds = [(json.loads(l)['t'], json.loads(l).get('name')) for l in open(self.t('state', 'procurator-build', 'progress', i + '.jsonl'))]
+        self.assertEqual(kinds, [('tool', 'bash'), ('say', None), ('tool', 'edit'), ('result', None)])
+        calls = [json.loads(l) for l in open(self.t('calls.log'))]
+        self.assertIn('model=gpt-5.3-codex', next(c for c in calls if c[0] == 'agent'))
+
+    def test_model_must_be_on_the_builders_list_when_one_is_set(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('w', WORKER); w = importlib.util.module_from_spec(spec); spec.loader.exec_module(w)
+        cfg = dict(self.cfg, models={'claude': ['opus', 'sonnet']}, default_models={'claude': 'sonnet'}, tools={'claude': sys.executable})
+        base = {'repo': 'example-user/demo', 'title': 'Add it', 'goal': 'Add the file please.'}
+        self.assertEqual(w.validate({'id': 'a' * 16, 'plan': base}, cfg)['model'], 'sonnet', 'the builder default fills in')
+        self.assertEqual(w.validate({'id': 'a' * 16, 'plan': dict(base, model='opus')}, cfg)['model'], 'opus')
+        with self.assertRaisesRegex(w.JobError, 'model list'):
+            w.validate({'id': 'a' * 16, 'plan': dict(base, model='haiku')}, cfg)
+        with self.assertRaisesRegex(w.JobError, 'Bad model'):
+            w.validate({'id': 'a' * 16, 'plan': dict(base, model='x;rm')}, cfg)
+        self.assertEqual(w.find_question('Done.\nQUESTION: Tabs or spaces?'), 'Tabs or spaces?')
+        self.assertEqual(w.find_question('I changed two files. Should I also update the docs?'), 'I changed two files. Should I also update the docs?')
+        self.assertIsNone(w.find_question('All done. Tests pass.'))
 
     def test_saved_claude_token_reaches_only_the_claude_run(self):
         with open(self.t('builder', 'claude-oauth-token'), 'w') as f:

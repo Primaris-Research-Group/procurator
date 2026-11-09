@@ -5,7 +5,7 @@ One codebase, one version number, one switch.
 | | PROCURATOR (`standard`) | PROCURATOR-X (`x`) |
 |---|---|---|
 | Everything in the README feature list | ✓ | ✓ |
-| Coding orchestrator: `build_prepare`, `build_status`, `build_cancel`, `/buildapprove`, `/builds`, Builds tab, builder relay, Composer "coding" packets | — | ✓ |
+| Coding orchestrator: `build_prepare` (BUILD.md, model), `build_status`, `build_cancel`, `/buildapprove`, `/buildnote`, `/buildlog`, Builds tab with live log, builder relay, Composer "coding" packets ([docs/builds.md](builds.md)) | — | ✓ |
 | Box size | 4 GB | 8 GB recommended |
 | Companion role | home browser lane | + builder (Claude Code / Codex on your Mac or PC) |
 

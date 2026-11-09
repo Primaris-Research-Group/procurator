@@ -15,6 +15,17 @@ builder worker (Windows PC in WSL / Mac) ──ssh, its own restricted key──
       └▶ git push branch → gh pr create --draft ──▶ report(done, PR link) ──▶ Telegram "BUILD READY"
 ```
 
+## Live builds (worker 1.4.0, Nov 8)
+
+A build is no longer a black box. While the agent works:
+
+- **Progress streams back.** Claude Code runs with `--output-format stream-json --input-format stream-json`; Codex with `codex exec --json`. Every few seconds (`progress_s`) the worker reports what the agent said, which files it touched and which commands it ran; the relay appends it to `progress/<id>.jsonl` and the plugin turns it into Telegram digests, `/buildlog` and the dashboard's live log.
+- **The owner steers.** `/buildnote ID text` is queued by the plugin under `notes/<id>/`; the relay hands each note to the worker once, with the answer to its next report; the worker sends it to the agent as a user message that starts with `OWNER:` (Codex: a new `codex exec resume --last` round).
+- **The agent can ask.** The prompt tells it to reply with one line `QUESTION: …` and wait when it needs a decision. The worker reports `waiting_owner` with the question, the owner gets a BUILD QUESTION message at once, and their note resumes the agent. Waiting does not count against the time limit; after `wait_minutes` (default 10) the agent is told to use its judgement and finish.
+- **The packet may name the model** (`model`), passed as `claude --model` / `codex -m`. The builder can restrict it (`models`) and set defaults (`default_models`) in `config.json`.
+
+Config keys: `live` (true; false restores the one-shot run), `wait_minutes`, `progress_s`, `max_rounds`, `models`, `default_models`. Nothing about pushing, path or secret checks changed: the agent still cannot push, and every change is checked before the branch leaves the machine.
+
 ## Which builder runs a build
 
 The packet's `builder` field decides:

@@ -6,6 +6,9 @@ WSL2 ("PROCURATOR builder"). Every 30 s it checks in with the droplet over a res
 SSH key (the key can only run build-relay.py there), picks up a build the owner approved with /buildapprove, and:
   1. clones the repo fresh into ~/Procurator/builds/<id>/repo and makes branch procurator/<id>;
   2. runs Claude Code or Codex (their own subscriptions) with the approved goal; pushing is disabled while it works;
+     LIVE (1.4.0): the agent's progress streams back to the droplet every few seconds, the owner's /buildnote messages
+     reach the agent mid-work as extra instructions, and when the agent needs a decision ("QUESTION: …") the build waits
+     for the owner's answer (status waiting_owner) instead of guessing. The packet may name the model.
   3. checks the change (allowed paths, no secret files or keys, size limits);
   4. runs the repo's test command from THIS machine's config (the droplet can never choose a command);
   5. commits, pushes the branch and opens a DRAFT pull request with gh; reports the link back.
@@ -19,9 +22,9 @@ Commands:
   worker.py list
 Standard library only (macOS python3 3.8+, Ubuntu python3).
 """
-import argparse, errno, fcntl, fnmatch, json, os, re, shlex, shutil, signal, socket, subprocess, sys, tempfile, threading, time
+import argparse, errno, fcntl, fnmatch, json, os, queue, re, shlex, shutil, signal, socket, subprocess, sys, tempfile, threading, time
 
-VERSION = '1.3.0'  # 1.3.0 (Nov 6): machine vitals in hello for the dashboard's Machines tab
+VERSION = '1.4.0'  # 1.4.0 (Nov 8): live builds (streamed progress, owner notes, QUESTION protocol), packet model; 1.3.0 (Nov 6): machine vitals
 HOME = os.path.expanduser('~')
 ROOT = os.environ.get('PROCURATOR_BUILDER_HOME', os.path.join(HOME, 'Procurator', 'builder'))
 CONFIG = os.path.join(ROOT, 'config.json')
@@ -36,6 +39,8 @@ BRANCH = re.compile(r'^[A-Za-z0-9._/-]{1,100}$')
 PATHSPEC = re.compile(r'^[A-Za-z0-9._/*-]{1,200}$')
 PR_URL = re.compile(r'https://github\.com/[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}/pull/\d{1,7}')
 AGENT_LABEL = {'claude': 'Claude Code', 'codex': 'Codex'}
+MODEL = re.compile(r'^[A-Za-z0-9._:/-]{2,64}$')
+QUESTION = re.compile(r'(?im)^\s*QUESTION:\s*(.+?)\s*$')
 
 DEFAULT_CONFIG = {
     'relay': ['ssh', '-F', '/dev/null', '-i', '~/.ssh/procurator_builder', '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
@@ -50,6 +55,16 @@ DEFAULT_CONFIG = {
     'test_timeout_s': 900,
     'push_when_tests_fail': True,
     'path': '',
+    # Live builds (1.4.0). live: stream the agent's progress and accept the owner's notes mid-build (Claude Code's
+    # stream-json input; Codex resumes its session between rounds). wait_minutes: how long a QUESTION waits for the owner
+    # before the agent is told to use its judgement. progress_s: how often progress is reported. models: the model names
+    # a packet may ask for, per agent (empty = anything the agent accepts); default_models: used when the packet names none.
+    'live': True,
+    'wait_minutes': 10,
+    'progress_s': 12,
+    'max_rounds': 8,
+    'models': {'claude': [], 'codex': []},
+    'default_models': {'claude': '', 'codex': ''},
     'tools': {'git': 'git', 'gh': 'gh', 'claude': 'claude', 'codex': 'codex'},
     'claude_args': ['--permission-mode', 'acceptEdits',
                     '--disallowedTools', 'Bash(git push:*),Bash(git remote:*),Bash(git config:*),Bash(ssh:*),Bash(scp:*),Bash(curl:*),Bash(wget:*),Bash(gh:*),WebFetch'],
@@ -171,9 +186,13 @@ def vitals():
 
 
 def hello_payload(cfg, busy=None):
+    models = cfg.get('models') if isinstance(cfg.get('models'), dict) else {}
+    defaults = cfg.get('default_models') if isinstance(cfg.get('default_models'), dict) else {}
     return {'version': VERSION, 'host': socket.gethostname()[:60], 'label': str(cfg.get('label') or 'Mac')[:30], 'repos': sorted(cfg['repos'].keys()),
-            'agents': agents_installed(cfg), 'busy': busy, 'vitals': vitals(),
-            'defaults': {'agent': cfg.get('default_agent'), 'branches': {r: c.get('branch', 'main') for r, c in cfg['repos'].items()}}}
+            'agents': agents_installed(cfg), 'busy': busy, 'vitals': vitals(), 'live': bool(cfg.get('live', True)),
+            'models': {a: [str(m)[:64] for m in (models.get(a) or []) if MODEL.match(str(m))][:20] for a in AGENT_LABEL},
+            'defaults': {'agent': cfg.get('default_agent'), 'branches': {r: c.get('branch', 'main') for r, c in cfg['repos'].items()},
+                         'models': {a: str(defaults.get(a))[:64] for a in AGENT_LABEL if defaults.get(a) and MODEL.match(str(defaults.get(a)))}}}
 
 
 def validate(packet, cfg):
@@ -202,9 +221,19 @@ def validate(packet, cfg):
     minutes = p.get('max_minutes') or 30
     if not isinstance(minutes, int) or not 5 <= minutes <= 60:
         raise JobError('Bad time limit.')
-    return {'id': packet['id'], 'repo': repo, 'base': base, 'agent': agent, 'title': title, 'goal': goal, 'acceptance': acceptance,
+    model = str(p.get('model') or '')
+    if not model:
+        model = str((cfg.get('default_models') or {}).get(agent) or '')
+    if model and not MODEL.match(model):
+        raise JobError('Bad model name.')
+    allowed_models = [str(m) for m in ((cfg.get('models') or {}).get(agent) or [])]
+    if model and allowed_models and model not in allowed_models:
+        raise JobError('%s is not on this builder\'s model list for %s (%s).' % (model, AGENT_LABEL[agent], ', '.join(allowed_models)))
+    return {'id': packet['id'], 'repo': repo, 'base': base, 'agent': agent, 'model': model, 'title': title, 'goal': goal, 'acceptance': acceptance,
             'paths': paths, 'minutes': min(minutes, int(cfg.get('max_minutes', 60))), 'test': rc.get('test') or '',
-            'allow_bash': [str(x) for x in rc.get('allow_bash', [])][:20], 'label': str(cfg.get('label') or 'Mac')[:30]}
+            'allow_bash': [str(x) for x in rc.get('allow_bash', [])][:20], 'label': str(cfg.get('label') or 'Mac')[:30],
+            'live': bool(cfg.get('live', True)), 'wait_s': 60 * max(1, min(int(cfg.get('wait_minutes', 10) or 10), 120)),
+            'progress_s': max(5, min(int(cfg.get('progress_s', 12) or 12), 60)), 'max_rounds': max(1, min(int(cfg.get('max_rounds', 8) or 8), 20))}
 
 
 def path_allowed(f, paths):
@@ -250,6 +279,12 @@ def prompt_for(job, branch):
               '- Keep the change focused; update tests and docs the change affects.']
     if job['test']:
         lines.append('- Run the tests with `%s` and fix what your change breaks. If tests already failed before your change, say so.' % job['test'])
+    if job.get('live'):
+        lines += ['', 'WORKING WITH THE OWNER:',
+                  '- The owner follows this build live. Messages that begin with "OWNER:" are their instructions, relayed by PROCURATOR; follow them like the GOAL.',
+                  '- If you need a decision from the owner (a choice between approaches, a missing fact, something ambiguous), stop and reply with one line that starts with',
+                  '  "QUESTION:" followed by the question, then wait; their answer arrives as the next message. Ask only when you cannot proceed well without it.',
+                  '- Otherwise keep working until the GOAL is met.']
     lines += ['', 'When finished, reply with a short plain-text summary (under 15 lines): what you changed and why, how you tested it, and anything the owner should check.']
     return '\n'.join(lines)
 
@@ -266,13 +301,16 @@ class Job(threading.Thread):
 
     # --- reporting -------------------------------------------------------------------------------------------
     def report(self, status, **fields):
+        """Report to the droplet; returns its answer ({'cancel':…, 'notes':[…]}) or {} when it could not be reached."""
         fields['status'] = status
         try:
             out = relay(self.cfg, 'report ' + self.id, fields)
             if out.get('cancel'):
                 self.cancel_event.set()
+            return out
         except Exception as e:
             log('report %s %s failed: %s' % (self.id, status, e))
+            return {}
 
     def cancel(self, reason=None):
         if reason:
@@ -333,6 +371,284 @@ class Job(threading.Thread):
             raise JobError('%s failed: %s' % (' '.join([os.path.basename(argv[0])] + [a for a in argv[1:4] if not a.startswith('-c')]), text.strip()[-400:]))
         return p.returncode, text
 
+    # --- the coding agent, live (1.4.0) -------------------------------------------------------------------------
+    def run_agent(self, job, cfg, job_dir, prompt, agent_log):
+        """Run Claude Code or Codex on the clone. Returns (exit code or 124 on timeout, summary, cost_usd, raw tail)."""
+        if job['agent'] == 'claude':
+            allowed = list(cfg['claude_allowed'])
+            if job['test']:
+                allowed.append('Bash(%s:*)' % job['test'])
+            allowed += ['Bash(%s)' % b for b in job['allow_bash']]
+            model = ['--model', job['model']] if job['model'] else []
+            env = None
+            token = claude_token()
+            if token:
+                env = dict(os.environ, CLAUDE_CODE_OAUTH_TOKEN=token)
+            if not job.get('live'):
+                argv = [tool(cfg, 'claude'), '-p', prompt, '--output-format', 'json'] + model + list(cfg['claude_args']) + ['--allowedTools', ','.join(allowed)]
+                code, out = self.run_cmd(argv, self.repo_dir, job['minutes'] * 60, logpath=agent_log, env=env)
+                result = parse_claude(out)
+                summary, cost = result.get('result') or '', result.get('total_cost_usd')
+                if result.get('is_error') and not summary:
+                    summary = 'Claude Code reported an error: ' + str(result.get('subtype', ''))
+                return code, summary, cost, out
+            argv = [tool(cfg, 'claude'), '-p', '--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'] + model + list(cfg['claude_args']) + ['--allowedTools', ','.join(allowed)]
+            return self.stream_claude(argv, prompt, env, agent_log, job)
+        last = os.path.join(job_dir, 'codex-last-message.txt')
+        model = ['-m', job['model']] if job['model'] else []
+        if not job.get('live'):
+            argv = [tool(cfg, 'codex'), 'exec'] + model + list(cfg['codex_args']) + ['-C', self.repo_dir, '--output-last-message', last, prompt]
+            code, out = self.run_cmd(argv, self.repo_dir, job['minutes'] * 60, logpath=agent_log)
+            return code, read_text(last), None, out
+        return self.stream_codex(model, list(cfg['codex_args']), last, prompt, agent_log, job)
+
+    def stream_claude(self, argv, prompt, env, agent_log, job):
+        """Claude Code in stream-json mode: the prompt and every later owner note go in as user messages; each event that
+        comes out becomes progress. After a result: a QUESTION waits for the owner (up to wait_s, the clock paused),
+        pending notes start another round, otherwise stdin closes and Claude Code exits."""
+        live = self.live
+        if self.cancel_event.is_set():
+            raise Cancelled()
+        logf = open(agent_log, 'ab')
+        self.proc = p = subprocess.Popen(argv, cwd=self.repo_dir, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=logf,
+                                         start_new_session=True, env=env, text=True, bufsize=1)
+        lines = queue.Queue()
+
+        def reader():
+            try:
+                for line in p.stdout:
+                    lines.put(line)
+            finally:
+                lines.put(None)
+        threading.Thread(target=reader, daemon=True).start()
+
+        def send(text_):
+            msg = {'type': 'user', 'message': {'role': 'user', 'content': [{'type': 'text', 'text': text_}]}}
+            p.stdin.write(json.dumps(msg) + '\n')
+            p.stdin.flush()
+
+        summary, cost, tail, code, timed_out = '', None, [], None, False
+        rounds, last_text, waiting_since, nudged, closed = 1, '', None, False, False
+        deadline = time.time() + job['minutes'] * 60
+        try:
+            send(prompt)
+            while True:
+                if self.cancel_event.is_set():
+                    self._kill(p)
+                    raise Cancelled()
+                now = time.time()
+                if waiting_since is None and now > deadline:
+                    timed_out = True
+                    self._kill(p)
+                    break
+                try:
+                    line = lines.get(timeout=0.5)
+                except queue.Empty:
+                    line = ''
+                if line is None:
+                    break
+                if line:
+                    logf.write(line.encode('utf-8', 'replace'))
+                    tail.append(line)
+                    tail = tail[-200:]
+                    try:
+                        ev = json.loads(line)
+                    except ValueError:
+                        continue
+                    kind = ev.get('type') if isinstance(ev, dict) else None
+                    if kind == 'assistant':
+                        for c in (ev.get('message') or {}).get('content') or []:
+                            if not isinstance(c, dict):
+                                continue
+                            if c.get('type') == 'text' and str(c.get('text') or '').strip():
+                                last_text = str(c['text']).strip()
+                                live.add('say', last_text)
+                            elif c.get('type') == 'tool_use':
+                                live.add('tool', tool_target(c.get('input')), name=str(c.get('name') or 'tool')[:40])
+                    elif kind == 'result':
+                        summary = str(ev.get('result') or '').strip() or last_text
+                        if isinstance(ev.get('total_cost_usd'), (int, float)):
+                            cost = ev['total_cost_usd']
+                        if ev.get('is_error') and not summary:
+                            summary = 'Claude Code reported an error: ' + str(ev.get('subtype', ''))
+                        notes = live.flush(force=True)
+                        question = None if nudged else find_question(summary or last_text)
+                        if notes:
+                            rounds += 1
+                            for n in notes:
+                                send('OWNER: ' + n['text'])
+                                live.add('note', n['text'])
+                        elif question and rounds < job['max_rounds']:
+                            live.add('question', question)
+                            live.flush(force=True, status='waiting_owner', question=question)
+                            waiting_since = time.time()
+                        else:
+                            live.add('result', summary[:400])
+                            closed = True
+                            p.stdin.close()
+                        last_text = ''
+                    continue
+                # no output this half second: progress, notes, and the owner's clock
+                notes = live.flush()
+                if notes:
+                    for n in notes:
+                        send('OWNER: ' + n['text'])
+                        live.add('note', n['text'])
+                    if waiting_since is not None:
+                        deadline += time.time() - waiting_since          # waiting for the owner does not count
+                        waiting_since = None
+                        rounds += 1
+                        live.flush(force=True, status='running', message='Answer received; %s continues' % AGENT_LABEL['claude'])
+                elif waiting_since is not None and time.time() - waiting_since > job['wait_s']:
+                    deadline += time.time() - waiting_since
+                    waiting_since = None
+                    nudged = True
+                    send('OWNER: (no answer within %d minutes) Use your best judgement on that question, keep the change minimal and safe, say what you assumed, and finish.' % (job['wait_s'] // 60))
+                    live.add('info', 'No answer from the owner in %d min; the agent was told to use its judgement and finish.' % (job['wait_s'] // 60))
+                    live.flush(force=True, status='running')
+        finally:
+            self.proc = None
+            try:
+                if not closed:
+                    p.stdin.close()
+            except (OSError, ValueError):
+                pass
+            code = p.wait() if p.poll() is None and not timed_out else (p.returncode if p.returncode is not None else 0)
+            logf.close()
+        if self.cancel_event.is_set():
+            raise Cancelled()
+        if timed_out:
+            return 124, summary, cost, ''.join(tail[-50:])
+        return code, summary, cost, ''.join(tail[-50:])
+
+    def stream_codex(self, model, codex_args, last, prompt, agent_log, job):
+        """Codex: `codex exec --json` streams items; owner notes that arrive during a round, or a QUESTION, start another
+        round with `codex exec resume --last` (bounded by max_rounds)."""
+        live = self.live
+        codex = tool(self.cfg, 'codex')
+        argv = [codex, 'exec', '--json'] + model + codex_args + ['-C', self.repo_dir, '--output-last-message', last, prompt]
+        rounds, total_tail, summary, nudged = 1, [], '', False
+        deadline = time.time() + job['minutes'] * 60
+        while True:
+            code, tail = self._stream_json_cmd(argv, deadline, agent_log, self._codex_event)
+            total_tail = (total_tail + tail)[-100:]
+            summary = read_text(last) or summary
+            if code == 124:
+                return 124, summary, None, ''.join(total_tail)
+            if code != 0:
+                return code, summary, None, ''.join(total_tail)
+            notes = live.flush(force=True)
+            question = None if nudged else find_question(summary)
+            if not notes and question and rounds < job['max_rounds']:
+                live.add('question', question)
+                live.flush(force=True, status='waiting_owner', question=question)
+                waited = self._wait_for_notes(job['wait_s'])
+                deadline += waited
+                notes = live.flush(force=True)
+                if not notes:
+                    nudged = True
+                    notes = [{'text': '(no answer within %d minutes) Use your best judgement on that question, keep the change minimal and safe, say what you assumed, and finish.' % (job['wait_s'] // 60)}]
+                    live.add('info', 'No answer from the owner in %d min; the agent was told to use its judgement and finish.' % (job['wait_s'] // 60))
+                live.flush(force=True, status='running', message='Codex continues')
+            if not notes or rounds >= job['max_rounds']:
+                live.add('result', summary[:400])
+                return code, summary, None, ''.join(total_tail)
+            rounds += 1
+            for n in notes:
+                live.add('note', n['text'])
+            follow = '\n'.join('OWNER: ' + n['text'] for n in notes)
+            argv = [codex, 'exec', 'resume', '--last', '--json'] + codex_args + ['-C', self.repo_dir, '--output-last-message', last, follow]
+
+    def _codex_event(self, ev, live):
+        item = ev.get('item') if isinstance(ev.get('item'), dict) else None
+        if item is None:
+            return
+        t = str(item.get('type') or '')
+        if ev.get('type') == 'item.completed' and t in ('agent_message', 'reasoning') and item.get('text'):
+            if t == 'agent_message':
+                live.add('say', str(item['text']).strip())
+        elif ev.get('type') == 'item.started' and t == 'command_execution':
+            live.add('tool', str(item.get('command') or '')[:200], name='bash')
+        elif ev.get('type') == 'item.completed' and t == 'file_change':
+            changes = item.get('changes') if isinstance(item.get('changes'), list) else []
+            live.add('tool', ', '.join(str(c.get('path') or '') for c in changes if isinstance(c, dict))[:200] or 'files', name='edit')
+
+    def _stream_json_cmd(self, argv, deadline, agent_log, on_event):
+        """Run argv, reading JSON lines from stdout as they come (progress) while honouring cancel, deadline and notes."""
+        live = self.live
+        if self.cancel_event.is_set():
+            raise Cancelled()
+        logf = open(agent_log, 'ab')
+        self.proc = p = subprocess.Popen(argv, cwd=self.repo_dir, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=logf,
+                                         start_new_session=True, text=True, bufsize=1)
+        lines = queue.Queue()
+
+        def reader():
+            try:
+                for line in p.stdout:
+                    lines.put(line)
+            finally:
+                lines.put(None)
+        threading.Thread(target=reader, daemon=True).start()
+        tail, timed_out = [], False
+        try:
+            while True:
+                if self.cancel_event.is_set():
+                    self._kill(p)
+                    raise Cancelled()
+                if time.time() > deadline:
+                    timed_out = True
+                    self._kill(p)
+                    break
+                try:
+                    line = lines.get(timeout=0.5)
+                except queue.Empty:
+                    live.flush()                       # notes collected here are delivered at the next round
+                    continue
+                if line is None:
+                    break
+                logf.write(line.encode('utf-8', 'replace'))
+                tail.append(line)
+                tail = tail[-200:]
+                try:
+                    ev = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(ev, dict):
+                    on_event(ev, live)
+        finally:
+            self.proc = None
+            code = p.wait() if p.poll() is None and not timed_out else (p.returncode if p.returncode is not None else 0)
+            logf.close()
+        if self.cancel_event.is_set():
+            raise Cancelled()
+        return (124 if timed_out else code), tail
+
+    def _wait_for_notes(self, wait_s):
+        """Pause (status waiting_owner already reported) until a note arrives or wait_s passes. Returns seconds waited."""
+        start = time.time()
+        while time.time() - start < wait_s:
+            if self.cancel_event.is_set():
+                raise Cancelled()
+            if self.live.peek():
+                break
+            time.sleep(2)
+        return time.time() - start
+
+    def _kill(self, p):
+        try:
+            os.killpg(p.pid, signal.SIGTERM)
+            p.wait(10)
+        except (OSError, subprocess.TimeoutExpired):
+            try:
+                os.killpg(p.pid, signal.SIGKILL)
+            except OSError:
+                pass
+            try:
+                p.wait(5)
+            except subprocess.TimeoutExpired:
+                pass
+
     def git(self, *args, check=True, timeout=300):
         return self.run_cmd([self.gitbin, '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null'] + list(args), self.repo_dir, timeout, check=check)
 
@@ -386,35 +702,13 @@ class Job(threading.Thread):
         with open(os.path.join(job_dir, 'prompt.md'), 'w') as f:
             f.write(prompt)
 
-        self.report('running', message='%s is working (limit %d min)' % (AGENT_LABEL[job['agent']], job['minutes']))
+        self.report('running', model=job['model'] or None, message='%s%s is working (limit %d min)' % (AGENT_LABEL[job['agent']], (' (' + job['model'] + ')') if job['model'] else '', job['minutes']))
         agent_log = os.path.join(job_dir, 'agent.log')
-        summary, cost = '', None
-        if job['agent'] == 'claude':
-            allowed = list(cfg['claude_allowed'])
-            if job['test']:
-                allowed.append('Bash(%s:*)' % job['test'])
-            allowed += ['Bash(%s)' % b for b in job['allow_bash']]
-            argv = [tool(cfg, 'claude'), '-p', prompt, '--output-format', 'json'] + list(cfg['claude_args']) + ['--allowedTools', ','.join(allowed)]
-            env = None
-            token = claude_token()
-            if token:
-                env = dict(os.environ, CLAUDE_CODE_OAUTH_TOKEN=token)
-            code, out = self.run_cmd(argv, self.repo_dir, job['minutes'] * 60, logpath=agent_log, env=env)
-            result = parse_claude(out)
-            summary, cost = result.get('result') or '', result.get('total_cost_usd')
-            if result.get('is_error') and not summary:
-                summary = 'Claude Code reported an error: ' + str(result.get('subtype', ''))
-        else:
-            last = os.path.join(job_dir, 'codex-last-message.txt')
-            argv = [tool(cfg, 'codex'), 'exec'] + list(cfg['codex_args']) + ['-C', self.repo_dir, '--output-last-message', last, prompt]
-            code, out = self.run_cmd(argv, self.repo_dir, job['minutes'] * 60, logpath=agent_log)
-            try:
-                with open(last) as f:
-                    summary = f.read().strip()
-            except OSError:
-                summary = ''
+        self.live = Live(self, job)
+        code, summary, cost, out = self.run_agent(job, cfg, job_dir, prompt, agent_log)
         if code == 124:
             raise JobError('%s ran past the %d-minute limit and was stopped. Nothing was pushed.' % (AGENT_LABEL[job['agent']], job['minutes']))
+        self.live.flush(force=True)
 
         self.git('add', '-A')
         _, names = self.git('diff', '--cached', '--name-only', base_sha)
@@ -467,6 +761,75 @@ class Job(threading.Thread):
                     duration_s=int(time.time() - self.started), message='Draft pull request opened',
                     **({'cost_usd': float(cost)} if isinstance(cost, (int, float)) else {}))
         log('build %s done: %s' % (self.id, m[-1]))
+
+
+class Live:
+    """Progress entries for the owner, reported in batches; the droplet's answer carries the owner's notes."""
+    def __init__(self, job_thread, job):
+        self.j, self.job = job_thread, job
+        self.pending, self.inbox, self.last, self.turn = [], [], 0.0, 0
+
+    def add(self, kind, text_, name=None):
+        e = {'t': kind, 'text': str(text_ or '')[:400], 'at': int(time.time() * 1000)}
+        if name:
+            e['name'] = str(name)[:40]
+        self.pending.append(e)
+        if len(self.pending) >= 30:
+            self.flush(force=True)
+
+    def flush(self, force=False, status='running', **extra):
+        """Send pending progress when due; return the owner's new notes (also kept in inbox until taken)."""
+        if not force and time.time() - self.last < self.job['progress_s']:
+            return self.take()
+        fields = dict(extra)
+        if self.pending:
+            fields['progress'] = self.pending[:60]
+            self.pending = self.pending[60:]
+        out = self.j.report(status, **fields)
+        self.last = time.time()
+        for n in out.get('notes') or []:
+            if isinstance(n, dict) and str(n.get('text') or '').strip():
+                self.inbox.append({'id': str(n.get('id') or ''), 'text': str(n['text'])[:2000]})
+        return self.take()
+
+    def peek(self):
+        return bool(self.inbox)
+
+    def take(self):
+        notes, self.inbox = self.inbox, []
+        return notes
+
+
+def find_question(text_):
+    """The agent's explicit 'QUESTION: …' line (the protocol in the prompt); a trailing direct question also counts."""
+    if not text_:
+        return None
+    m = QUESTION.search(text_)
+    if m:
+        return m.group(1).strip()[:1500]
+    tail_ = text_.strip().splitlines()[-1].strip() if text_.strip() else ''
+    if tail_.endswith('?') and re.search(r'\b(should|do you|would you|which|prefer|want me|shall|ok to|okay to)\b', tail_, re.I):
+        return tail_[:1500]
+    return None
+
+
+def tool_target(inp):
+    """What a tool call is about, for the progress line: a path, a command, a pattern."""
+    if not isinstance(inp, dict):
+        return ''
+    for k in ('file_path', 'path', 'notebook_path', 'command', 'pattern', 'query', 'url', 'description'):
+        v = inp.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()[:200]
+    return ''
+
+
+def read_text(path):
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return ''
 
 
 def claude_token():

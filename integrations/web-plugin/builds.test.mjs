@@ -6,7 +6,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 process.env.PROCURATOR_EDITION='x';   // 0.30.0: builds exist on PROCURATOR-X; the last test covers the standard edition
-const {Builds, registerBuilds, validatePlan}=await import('./builds.mjs');
+const {Builds, registerBuilds, validatePlan, parsePacketMarkdown}=await import('./builds.mjs');
 
 const RELAY = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'builder', 'build-relay.py');
 const args = {repo: 'example-user/demo', title: 'Add hello file', goal: 'Add src/hello.txt that says hello.', acceptance: ['src/hello.txt exists'], paths: ['src/'], request_id: 'req-hello-01'};
@@ -143,7 +143,7 @@ test('tools are main-agent only; commands are owner-only and plain text', async 
   const st = (await commands.find(c => c.name === 'buildstatus').handler({owner: true, args: ''})).text;
   assert.match(st, /Mac \(mac\): online/); assert.match(st, new RegExp(out.id + ' · queued · example-user/demo'));
   assert.ok(!/`/.test(st));
-  assert.deepEqual(commands.map(c => c.name), ['buildapprove', 'buildcancel', 'buildstatus', 'buildreview']);
+  assert.deepEqual(commands.map(c => c.name), ['buildapprove', 'buildcancel', 'buildstatus', 'buildreview', 'buildnote', 'buildlog']);
 });
 
 test('two builders: the review names who can run it; a named builder is respected', async () => {
@@ -185,4 +185,85 @@ test('standard edition: build commands answer with the edition note and touch no
   assert.match(r.text,/PROCURATOR-X/);
   assert.ok(!fs.existsSync(path.join(dir,'jobs.json')));
  }finally{process.env.PROCURATOR_EDITION='x';}
+});
+
+const BUILD_MD = `---
+repo: example-user/demo
+agent: claude
+model: opus
+paths: [src/, tests/]
+max_minutes: 45
+---
+# Add a greeting file
+
+## Goal
+Add src/hello.txt with a friendly greeting.
+Keep it to one line.
+
+## Acceptance
+- [ ] src/hello.txt exists
+- [ ] tests pass
+
+## Notes
+The owner prefers Spanish.
+`;
+
+test('0.31.0: a BUILD.md packet is parsed into a plan; the model rides along; explicit fields win', async () => {
+  const parsed = parsePacketMarkdown(BUILD_MD);
+  assert.equal(parsed.title, 'Add a greeting file'); assert.equal(parsed.repo, 'example-user/demo'); assert.equal(parsed.model, 'opus');
+  assert.deepEqual(parsed.paths, ['src/', 'tests/']); assert.equal(parsed.max_minutes, 45);
+  assert.deepEqual(parsed.acceptance, ['src/hello.txt exists', 'tests pass']);
+  assert.match(parsed.goal, /^Add src\/hello\.txt with a friendly greeting\.\nKeep it to one line\.\n\nNotes:\nThe owner prefers Spanish\.$/);
+  const {dir, builds} = fixture(); mac(dir, {models: {claude: ['opus', 'sonnet']}});
+  const {plan} = validatePlan({markdown: BUILD_MD, request_id: 'req-md-01', max_minutes: 20}, builds.builders());
+  assert.equal(plan.model, 'opus'); assert.equal(plan.max_minutes, 20, 'explicit argument wins over the file'); assert.equal(plan.title, 'Add a greeting file');
+  assert.throws(() => validatePlan({markdown: BUILD_MD.replace('model: opus', 'model: haiku'), request_id: 'req-md-02'}, builds.builders()), /not on the builder's model list/);
+  assert.throws(() => validatePlan({markdown: BUILD_MD.replace('model: opus', 'model: x;rm -rf'), request_id: 'req-md-03'}, builds.builders()), /short model name/);
+  const a = await builds.prepare({markdown: BUILD_MD, request_id: 'req-md-04'});
+  const review = builds.review(builds.find(builds.read(), a.id));
+  assert.match(review, /Claude Code \(opus\)/); assert.match(review, /\/buildnote [a-f0-9]{16} <text> steers it/);
+  assert.ok(!fs.existsSync(path.join(dir, 'queue', a.id + '.json')), 'not queued before approval');
+  builds.approve(a.id, builds.find(builds.read(), a.id).hash);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'queue', a.id + '.json'), 'utf8')).plan.model, 'opus', 'the relay hands the model to the builder');
+});
+
+test('0.31.0: live build — the question reaches the owner at once, /buildnote queues the answer, digests are throttled, /buildlog shows progress', async () => {
+  const {dir, sent, builds, tick} = fixture(); mac(dir);
+  const commands = [];
+  registerBuilds({registerTool: () => {}, registerCommand: c => commands.push(c)}, builds, ctx => { if (!ctx.owner) throw new Error('Only the owner.'); });
+  clearInterval(globalThis[Symbol.for('owner.builds.sweep')]);
+  const note = commands.find(c => c.name === 'buildnote'), log = commands.find(c => c.name === 'buildlog');
+  const a = await builds.prepare(args); builds.approve(a.id, builds.find(builds.read(), a.id).hash);
+  assert.match((await note.handler({owner: true, args: `${a.id} hurry`})).text, /notes reach the agent only while it is working/);
+  const write = (rep) => fs.writeFileSync(path.join(dir, 'reports', a.id + '.json'), JSON.stringify({id: a.id, updated_at: Date.now(), builder: 'mac', ...rep}));
+  const progress = (entries) => fs.appendFileSync(path.join(dir, 'progress', a.id + '.jsonl'), entries.map(e => JSON.stringify({at: Date.now(), ...e})).join('\n') + '\n');
+  sent.length = 0;
+  progress([{t: 'say', text: 'Reading the repo.'}, {t: 'tool', name: 'Edit', text: 'src/hello.txt'}]);
+  write({status: 'running', progress_count: 2}); await builds.sweep();
+  assert.equal(sent.length, 2, 'started notice and the first progress digest');
+  const digest1 = sent.find(m => /▸ Edit/.test(m.message));
+  assert.ok(digest1); assert.match(digest1.message, /▸ Edit src\/hello\.txt/); assert.match(digest1.message, new RegExp('/buildnote ' + a.id));
+  progress([{t: 'say', text: 'Running tests.'}]); write({status: 'running', progress_count: 3}); await builds.sweep();
+  assert.equal(sent.length, 2, 'no second digest within two minutes');
+  tick(3 * 60000); await builds.sweep();
+  assert.equal(sent.length, 3); assert.match(sent[2].message, /Running tests\./);
+  // the agent asks
+  progress([{t: 'question', text: 'English or Spanish?'}]); write({status: 'waiting_owner', question: 'English or Spanish?', progress_count: 4}); await builds.sweep(); await builds.sweep();
+  assert.equal(sent.length, 4); assert.match(sent[3].message, /BUILD QUESTION — [a-f0-9]{16}/); assert.match(sent[3].message, /English or Spanish\?/); assert.match(sent[3].message, new RegExp('/buildnote ' + a.id + ' your answer'));
+  assert.equal(builds.find(builds.read(), a.id).status, 'waiting_owner');
+  assert.match((await note.handler({owner: false, args: `${a.id} Spanish`})).text, /Only the owner/);
+  assert.match((await note.handler({owner: true, args: `${a.id} Spanish`})).text, /Answer sent to build/);
+  const files = fs.readdirSync(path.join(dir, 'notes', a.id));
+  assert.equal(files.length, 1); assert.match(files[0], /^\d{13}-[a-f0-9]{8}\.json$/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'notes', a.id, files[0]), 'utf8')).text, 'Spanish');
+  const text = (await log.handler({owner: true, args: a.id})).text;
+  assert.match(text, /waiting owner/); assert.match(text, /Waiting for you: English or Spanish\?/); assert.match(text, /❓ English or Spanish\?/); assert.match(text, /▸ Edit src\/hello\.txt/);
+  const view = builds.status(a.id).build;
+  assert.equal(view.question, 'English or Spanish?'); assert.equal(view.progress.length, 4); assert.equal(view.steer, `/buildnote ${a.id} <text>`);
+  // answered: the relay clears the question; the same question is not re-sent
+  write({status: 'running', progress_count: 5}); await builds.sweep(); await builds.sweep();
+  assert.equal(sent.filter(m => /BUILD QUESTION/.test(m.message)).length, 1);
+  write({status: 'done', pr_url: 'https://github.com/example-user/demo/pull/9', files: ['src/hello.txt'], file_count: 1}); await builds.sweep();
+  assert.match(sent.at(-1).message, /BUILD READY/);
+  assert.match((await note.handler({owner: true, args: `${a.id} too late`})).text, /notes reach the agent only while it is working/);
 });

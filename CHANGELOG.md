@@ -2,6 +2,14 @@
 
 All notable changes to PROCURATOR. The project was built as one owner's assistant from October 2026 and opened as a public tree at 0.30.0; earlier entries are condensed from the internal release notes.
 
+## 0.31.0 — 2026-11-09 — live builds (PROCURATOR-X)
+
+- **BUILD.md packets.** `build_prepare` accepts the owner's Markdown packet (`markdown=`): front matter for repo, base, agent, model, builder, paths and time limit; `# title`, `## Goal`, `## Acceptance` bullets. Template in `config/BUILD.example.md`; guide in `docs/builds.md`.
+- **Model choice.** A packet names the model; the builder passes it to `claude --model` or `codex -m`, and can restrict and default it (`models`, `default_models` in its config).
+- **Follow it live.** The builder streams what the agent says, edits and runs (Claude Code stream-json; Codex `--json`); the relay keeps `progress/<id>.jsonl`; Telegram gets a digest every two minutes, `/buildlog ID` the last twenty entries, the dashboard build page a live log.
+- **Steer and answer.** `/buildnote ID text` reaches the agent within seconds as "OWNER: …". When the agent needs a decision it replies `QUESTION: …`, the build goes to *waiting_owner*, the owner gets a **BUILD QUESTION** message at once, and their note resumes it; waiting time does not count against the limit; after the builder's `wait_minutes` the agent is told to use its judgement and finish.
+- Builder worker 1.4.0, relay 1.4.0 (`notes/`, `progress/`, status `waiting_owner`, status-change timeline). Standard edition unchanged.
+
 ## 0.30.0 — 2026-11-08 — first public source
 
 - **Editions.** PROCURATOR (standard) and PROCURATOR-X (adds the coding orchestrator) from one tree: `"edition": "x"` on connector manifests, `install.sh --edition`, `PROCURATOR_EDITION` honoured by the brokers and the plugin gate; x-only tools refuse on a standard box and are absent from its capability card.

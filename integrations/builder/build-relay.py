@@ -12,10 +12,15 @@ Commands (from SSH_ORIGINAL_COMMAND; JSON on stdin, one JSON line on stdout):
   pull           Claim the oldest approved job meant for this builder (plan.builder = NAME or "any") whose repo
                  is on this builder's allowed list (queue/<id>.json written by the gateway plugin after /buildapprove).
   report <id>    Progress or result for a claimed job (status, PR link, test result, summary). Reply: cancelled?
+                 Live builds (1.4.0, Nov 8): the report may carry `progress` (what the agent is doing), `question`
+                 (status waiting_owner) and `model`; the reply also carries `notes`, the owner's messages for the
+                 agent queued by the plugin (/buildnote), each delivered exactly once.
 
 Files (state/procurator-build, shared with the gateway container as /home/node/.openclaw/procurator-build):
   queue/<id>.json, cancel/<id>     written by the gateway plugin only
   claims/<id>.json, reports/<id>.json, builders/<name>.json   written by this relay only
+  notes/<id>/*.json                written by the plugin, consumed (deleted) by this relay when delivered
+  progress/<id>.jsonl              appended by this relay from reports; the plugin and dashboard read the tail
 Every value from the Mac is checked and size-limited here; the plugin checks again before showing it.
 
 Browser mode (web 0.19.0, home browser lane): a SECOND restricted key per machine runs
@@ -33,7 +38,10 @@ NAME = re.compile(r'^[a-z0-9-]{1,20}$')
 REPO = re.compile(r'^[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}$')
 PR = re.compile(r'^https://github\.com/[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}/pull/\d{1,7}$')
 BRANCH = re.compile(r'^procurator/[a-f0-9]{16}$')
-STATUSES = ('claimed', 'preparing', 'running', 'testing', 'pushing', 'done', 'failed', 'cancelled')
+STATUSES = ('claimed', 'preparing', 'running', 'waiting_owner', 'testing', 'pushing', 'done', 'failed', 'cancelled')
+PROGRESS_KINDS = ('say', 'tool', 'result', 'question', 'note', 'info')
+PROGRESS_MAX_LINES = 400
+MODEL = re.compile(r'^[A-Za-z0-9._:/-]{2,64}$')
 FINAL = ('done', 'failed', 'cancelled')
 MAX_IN = 65536
 EXPIRE_MS = 24 * 3600 * 1000
@@ -63,7 +71,7 @@ def ensure_dirs():
         os.makedirs(STATE, mode=0o700)
         os.chown(STATE, st.st_uid, st.st_gid)
     st = os.stat(STATE)
-    for sub in ('queue', 'cancel', 'claims', 'reports', 'builders'):
+    for sub in ('queue', 'cancel', 'claims', 'reports', 'builders', 'notes', 'progress'):
         p = os.path.join(STATE, sub)
         if not os.path.isdir(p):
             os.makedirs(p, mode=0o700)
@@ -218,10 +226,33 @@ def report(name, build_id, data):
         raise RelayError('unknown status')
     out = dict(current)
     out.update({'id': build_id, 'status': status, 'updated_at': now_ms(), 'builder': name})
-    for key, limit in (('message', 600), ('summary', 3000), ('agent', 20), ('base', 100)):
+    for key, limit in (('message', 600), ('summary', 3000), ('agent', 20), ('base', 100), ('question', 1500)):
         v = text(data.get(key), limit, key)
         if v is not None:
             out[key] = v
+    if status != 'waiting_owner' and 'question' in out and data.get('question') is None:
+        out.pop('question', None)                      # answered or moved on: the question no longer stands
+    if data.get('model') is not None:
+        if not isinstance(data['model'], str) or not MODEL.match(data['model']):
+            raise RelayError('model must be a short model name')
+        out['model'] = data['model']
+    turn = integer(data.get('turn'), 'turn', 0, 1000)
+    if turn is not None:
+        out['turn'] = turn
+    progress = data.get('progress')
+    if progress is not None:
+        if not isinstance(progress, list) or len(progress) > 60:
+            raise RelayError('progress must be a list of up to 60 entries')
+        lines = []
+        for e in progress:
+            if not isinstance(e, dict) or e.get('t') not in PROGRESS_KINDS:
+                raise RelayError('progress entry invalid')
+            lines.append({'t': e['t'], 'text': text(e.get('text'), 400, 'progress.text') or '', 'name': text(e.get('name'), 40, 'progress.name'),
+                          'at': integer(e.get('at'), 'progress.at', 0, 10**13) or now_ms()})
+        if lines:
+            append_progress(build_id, lines)
+            out['progress_count'] = integer(current.get('progress_count', 0), 'progress_count', 0, 10**7) + len(lines)
+            out['last_progress'] = lines[-1]
     if data.get('pr_url') is not None:
         if not isinstance(data['pr_url'], str) or not PR.match(data['pr_url']):
             raise RelayError('pr_url must be a github.com pull request link')
@@ -252,10 +283,53 @@ def report(name, build_id, data):
             raise RelayError('cost_usd out of range')
         out['cost_usd'] = round(float(c), 4)
     events = list(current.get('events') or [])[-19:]
-    events.append({'status': status, 'at': out['updated_at']})
+    if not events or events[-1].get('status') != status:          # a timeline of status changes, not of progress reports
+        events.append({'status': status, 'at': out['updated_at']})
     out['events'] = events
     write_json(path, out)
-    return {'ok': True, 'cancel': os.path.exists(os.path.join(STATE, 'cancel', build_id))}
+    return {'ok': True, 'cancel': os.path.exists(os.path.join(STATE, 'cancel', build_id)), 'notes': take_notes(build_id)}
+
+
+def append_progress(build_id, lines):
+    """progress/<id>.jsonl: one JSON object per line, the newest last, capped at PROGRESS_MAX_LINES (oldest dropped)."""
+    uid, gid = ensure_dirs()
+    path = os.path.join(STATE, 'progress', build_id + '.jsonl')
+    old = []
+    try:
+        with open(path) as f:
+            old = [l for l in f.read().splitlines() if l.strip()]
+    except OSError:
+        pass
+    keep = (old + [json.dumps(l, separators=(',', ':')) for l in lines])[-PROGRESS_MAX_LINES:]
+    tmp = path + '.tmp'
+    with open(tmp, 'w') as f:
+        f.write('\n'.join(keep) + '\n')
+    os.chmod(tmp, 0o600)
+    os.chown(tmp, uid, gid)
+    os.replace(tmp, path)
+
+
+def take_notes(build_id):
+    """The owner's queued messages for this build (plugin: notes/<id>/<ms>-<rand>.json), oldest first, each returned once."""
+    d = os.path.join(STATE, 'notes', build_id)
+    if not os.path.isdir(d):
+        return []
+    out = []
+    for name in sorted(os.listdir(d))[:20]:
+        if not re.match(r'^[0-9]{10,16}-[a-f0-9]{4,16}\.json$', name):
+            continue
+        path = os.path.join(d, name)
+        try:
+            n = read_json(path, {}) or {}
+            t = text(n.get('text'), 2000, 'note')
+            if t:
+                out.append({'id': name[:-5], 'text': t, 'at': integer(n.get('at'), 'note.at', 0, 10**13) or 0})
+        finally:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+    return out
 
 
 def lane_dir(name):
