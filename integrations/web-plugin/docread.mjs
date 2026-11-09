@@ -71,7 +71,8 @@ export function resolveFile(a, {roots = FILE_ROOTS, fsx = fs, list = o => listFi
   if (!hits.length) throw new Error(`No recent file matches "${name}". Call owner_files_recent to see the files on the server.`);
   const distinct = [...new Set(hits.map(f => f.name))];
   if (distinct.length > 1) throw new Error(`Several files match "${name}": ${distinct.slice(0, 8).join('; ')}. Give a longer part of the name or the path.`);
-  return {path: hits[0].path, name: hits[0].name};
+  let real; try { real = fsx.realpathSync(hits[0].path); } catch { throw new Error('That file is no longer on the server. Ask the owner to send it again.'); }
+  return {path: real, name: hits[0].name};
 }
 const GOOGLE = {
   'application/vnd.google-apps.document': {how: 'docs'},
